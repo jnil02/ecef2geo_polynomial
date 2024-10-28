@@ -16,7 +16,7 @@
 #include <cmath>  // std::sqrt, std::cbrt, std::atan, std::sin, std::cos.
 #include <vector>  // std::vector.
 #include <iostream>  // std::cout.
-#include <iomanip> // std::setprecision.
+//#include <iomanip> // std::setprecision.
 #include <limits>  // std::numeric_limits.
 #include <ostream>  // std::endl.
 
@@ -81,11 +81,17 @@ static const char *tau_postamble =
 		"}  // namespace priv\n"
 		"\n#endif // ECEF2GEO_TAU_HPP\n";
 
-// Primary WGS84 constants.
-constexpr double a = 6378137.0;  // Semi-major axis / equatorial radius.
-constexpr double f = 1.0 / 298.257223563;  // Flattening.
-// Derived WGS84 constants.
-constexpr double b = a - f * a;  // Semi-minor axis / polar radius.
+/* TODO(JO)
+ * Copy-and-past of reference transformation from ecef2geo_reference.hpp. These
+ * are used to compute "max delta". The copy-and-past is just to avoid cross
+ * includes between different parts of the project. Preferably, here we should use
+ * the multiprecision reference transformation of this part of the project but
+ * given the ineffectiveness of computations approach (brute force sampling),
+ * this would take a long time. "max delta" is benign so we don't really need
+ * multiprecision but to avoid this code duplication we should do something
+ * better.
+ */
+namespace ecef2geo_reference {
 
 struct xyz {
 	double x;
@@ -93,49 +99,101 @@ struct xyz {
 	double z;
 };
 
-/** Transformation of ECEF to geodetic latitude.
+// Primary WGS84 constants.
+constexpr double a = 6378137.0;  // Semi-major axis / equatorial radius.
+constexpr double f = 1.0 / 298.257223563;  // Flattening.
+// Derived WGS84 constants.
+constexpr double b = a - f * a;  // Semi-minor axis / polar radius.
+constexpr double e2 = 1.0 - (b * b) / (a * a);  // First eccentricity squared.
+// Note, constexpr sqrt is a gcc extension. If not available you may use:
+//constexpr double e = 0.08181919084262157;
+// However, in this case, you will have to make sure it matches the primary
+// constants a and f.
+constexpr double e = std::sqrt(e2);  // First eccentricity.
+
+// Some constants for Vermeille's 2011 transformation.
+constexpr double a2 = a * a;
+constexpr double b2 = b * b;
+constexpr double e4 = e2 * e2;
+constexpr double b2am2 = b2 / a2;
+constexpr double a3 = a2 * a;
+constexpr double a4 = a2 * a2;
+constexpr double am2 = 1. / a2;
+constexpr double bam2 = b / a2;
+constexpr double b2am4 = b2 / a4;
+constexpr double inv_6 = 1. / 6.;
+constexpr double e2_2 = e2 / 2;
+constexpr double e2bam3 = e2 * b / a3;
+constexpr double M_PI_6 = M_PI / 6.;
+constexpr double M_2_3 = (2. / 3.);
+constexpr double bam1 = b / a; // = 1 - f
+constexpr double bem1 = b / e;
+constexpr double e2bm1 = e2 / b;
+constexpr double c = M_SQRT1_2 - 1.;
+
+/** ECEF to geodetic coordinate transformation by Vermeille's 2011 method.
  *
- * Done with Vermeille's 2004 exact method.
+ * Closed form ECEF to geodetic coordinate transformation as per:
  *
- * @param ecef ECEF coordinate.
- * @return Geodetic latitude.
+ * Vermeille, H, An analytical method to transform geocentric into geodetic
+ * coorindates. J. Geod. (2011) 85:105-117. DOI 10.1007/s00190-010-0419-x
+ *
+ * Valid for all finite input ECEF coordinates.
+ * ECEF coordinates on the singular disk are taken to be positive.
+ *
+ * @param ecef {x, y, z}
+ * @return {latitude, longitude, altitude}
  */
-static double ecef2lat(xyz ecef) {
-	constexpr double a2 = a * a;
-	constexpr double e2 = 1.0 - b * b / (a * a);
-	constexpr double ec2 = 1.0 - e2;
-	constexpr double e4 = e2 * e2;
-	constexpr double ec2_a2 = ec2 / a2;
-	constexpr double a2_inv = 1.0 / a2;
-	constexpr double c1 = 1.0 / 6.0;
-	constexpr double c2 = e4 / 4.0;
-	constexpr double c3 = e2 / 2.0;
+static inline double ecef2lat(xyz ecef) {
+	double& x = ecef.x;
+	double& y = ecef.y;
+	double& z = ecef.z;
 
-	double x2y2 = ecef.x * ecef.x + ecef.y * ecef.y;
-	double sqrtx2y2 = std::sqrt(x2y2);
-	double z2 = ecef.z * ecef.z;
+	double t2 = x * x + y * y;
+	double t = std::sqrt(t2);
+	double p = t2 * am2;
+	double q = z * z * b2am4;
+	double r = (p + q - e4) * inv_6;
+	double r38 = r * r * r * 8.;
+	double ev = r38 + e4 * p * q;
 
-	double q = ec2_a2 * z2;
-	double p = x2y2 * a2_inv;
-	double r = (p + q - e4) * c1;
-	double s = c2 * p * q / (r * r * r);
-	double t = std::cbrt(1.0 + s + std::sqrt(s * (2.0 + s)));
-	double u = r * (1.0 + t + 1.0 / t);
-	double v = std::sqrt(u * u + e4 * q);
-	double w = c3 * (u + v - q) / v;
-	double k = std::sqrt(u + v + w * w) - w;
-	double k_k_e2 = k / (k + e2);
-	double d = k_k_e2 * sqrtx2y2;
+	if (ev > 0) {
+		// Outside evolute.
+		double s = e2bam3 * std::abs(z) * t;
+		double sqrt_ev = std::sqrt(ev);
+		double c1 = sqrt_ev + s;
+		double c2 = sqrt_ev - s;
+		double u = r + 0.5 * std::cbrt(c1 * c1) + 0.5 * std::cbrt(c2 * c2);
 
-	double tmp = std::sqrt(d * d + z2);
+		double v = std::sqrt(u * u + e4 * q);
+		double w = e2_2 * (u + v - q) / v;
+		double k = (u + v) / (std::sqrt(w * w + u + v) + w);
+		double D = k / (k + e2) * t;
+		double d = std::sqrt(D * D + z * z);
 
-	return 2.0 * std::atan(ecef.z / (d + tmp));
+		return 2. * std::atan(z / (d + D));
+	} else if (q != 0) {
+		// On or inside evolute and not on singular disc.
+		double s = e2bam3 * std::abs(z) * t;  // std::sqrt(e4*p*q)
+		double up = M_2_3 * std::atan(s / (std::sqrt(-ev) + std::sqrt(-r38)));
+		double u = -4. * r * std::sin(up) * std::cos(M_PI_6 + up);
+
+		double v = std::sqrt(u * u + e4 * q);
+		double w = e2_2 * (u + v - q) / v;
+		double k = (u + v) / (std::sqrt(w * w + u + v) + w);
+		double D = k * t / (k + e2);
+		double d = std::sqrt(D * D + z * z);
+
+		return 2. * std::atan(z / (d + D));
+	} else {
+		// On the singular disc (including center of earth).
+		// Values are taken to have positive latitude.
+		double h = -bem1 * std::sqrt(e2 - p);
+		return 2. * std::atan(std::sqrt(e4 - p)
+									/ (-e2bm1 * h + bam1 * std::sqrt(p)));
+	}
 }
-
-// TODO(JO) This takes like 10s to compute. However, it should be doable in a
-//  much shorter time.  Also, the current accuracy is pretty poor. The
-//  function is smooth with a single maxima so some derivative free search
-//  algorithm should probably be much better.
+} // namespace ecef2geo_reference
 
 /** Compute maximum value of "delta".
  *
@@ -162,9 +220,9 @@ static double compute_max_delta(double p_min, double p_max) {
 		for (auto phi_c: phi_cs) {
 			double sin_phi_c = std::sin(phi_c);
 			double cos_phi_c = std::cos(phi_c);
-			xyz ecef = {cos_phi_c * p, 0.0, sin_phi_c * p};
-			double phi = ecef2lat(ecef);
-			double diff = phi - phi_c;
+			ecef2geo_reference::xyz ecef = {cos_phi_c * p, 0.0, sin_phi_c * p};
+			double lat = ecef2geo_reference::ecef2lat(ecef);
+			double diff = lat - phi_c;
 			double de = diff * diff;
 			if (max_delta < de)
 				max_delta = de;
@@ -190,11 +248,11 @@ int div_floor(int x, int y) {
 
 int main() {
 	// Compute the value range of the approximations.
-	const double lo = ALT_LO_LIMIT + b;
-	const double hi = ALT_HI_LIMIT + a;
+	const double lo = ALT_LO_LIMIT + ecef2geo_reference::b;
+	const double hi = ALT_HI_LIMIT + ecef2geo_reference::a;
 	const double DELTA_MIN = 0.0;
 	double DELTA_MAX = compute_max_delta(lo, hi);
-	std::cout << std::setprecision(17) << DELTA_MAX << std::endl;
+//	std::cout << std::setprecision(17) << DELTA_MAX << std::endl;
 
 	// Initialize Sollya.
 	sollya_lib_init();

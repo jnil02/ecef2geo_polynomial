@@ -35,7 +35,6 @@ target_link_libraries(main_multiplicative
 
 add_executable(main_additive
         coefficient_computations/main_additive.cpp
-        coefficient_computations/util_geo.cpp
         )
 target_link_libraries(main_additive
         mpfr

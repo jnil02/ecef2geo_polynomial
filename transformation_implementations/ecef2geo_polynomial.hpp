@@ -24,9 +24,7 @@
 #include "generated/chi.hpp"
 
 #include <cstdint>  // int64_t, uint64_t
-
 #define _USE_MATH_DEFINES
-
 #include <cmath>  // std::copysign, std::sqrt, std::abs.
 
 // Make sure pi constants are defined. These should normally be defined in
@@ -44,15 +42,15 @@
 namespace ecef2geo {
 
 // Assert that all polynomials are generated with the same ranges.
-static_assert(OMEGA_H_MAX == MU_H_MAX);
-static_assert(OMEGA_H_MAX == SIGMA_H_MAX);
-static_assert(OMEGA_H_MAX == TAU_H_MAX);
-static_assert(OMEGA_H_MIN == MU_H_MIN);
-static_assert(OMEGA_H_MIN == SIGMA_H_MIN);
-static_assert(OMEGA_H_MIN == TAU_H_MIN);
-static_assert(SIGMA_DELTA_MIN == TAU_DELTA_MIN);
-static_assert(SIGMA_DELTA_MAX == TAU_DELTA_MAX);
-static_assert(OMEGA_H_0 == MU_H_0);
+static_assert(OMEGA_H_MAX == MU_H_MAX, "Nonmatching H_max.");
+static_assert(OMEGA_H_MAX == SIGMA_H_MAX, "Nonmatching H_max.");
+static_assert(OMEGA_H_MAX == TAU_H_MAX, "Nonmatching H_max.");
+static_assert(OMEGA_H_MIN == MU_H_MIN, "Nonmatching H_min.");
+static_assert(OMEGA_H_MIN == SIGMA_H_MIN, "Nonmatching H_min.");
+static_assert(OMEGA_H_MIN == TAU_H_MIN, "Nonmatching H_min.");
+static_assert(SIGMA_DELTA_MIN == TAU_DELTA_MIN, "Nonmatching delta_max.");
+static_assert(SIGMA_DELTA_MAX == TAU_DELTA_MAX, "Nonmatching delta_max.");
+static_assert(OMEGA_H_0 == MU_H_0, "Nonmatching H_0.");
 
 /*
  * Trigonometric function approximations used by the transformation

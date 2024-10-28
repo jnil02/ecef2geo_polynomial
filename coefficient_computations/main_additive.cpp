@@ -9,7 +9,7 @@
  */
 
 #include "settings.hpp"
-#include "util_geo.hpp"
+#include "util_mpgeo.hpp"
 #include "util_eval.hpp"
 #include "remez_mp.hpp"
 
@@ -31,13 +31,15 @@
 using time_point = std::chrono::steady_clock::time_point;
 using ostrstream = std::ostringstream;
 
-// TODO(JO) It is unclear why such a large number of bits are required.
+// TODO(JO) It is unclear why such a large number of bits is required.
 //  Something is clearly ill conditioned.
 // Number of bits of precision in the computations.
 // 200 is required to get stable results for high coefficients. Reasonable
 // results can be attained with 100. 53 corresponds to double. (Multiplying with
 // 0.3 gives roughly the decimal precision.)
 constexpr mp_prec_t prec = 200;
+// Mpfr consts with appropriate precision.
+wgs84_mpfr_constants util_mpgeo::mpfr_consts = wgs84_mpfr_constants(prec);
 // Max number of Remez algorithm iterations.
 constexpr int ITER_MAX = 500;
 // Terminate Remez algorithm when relative difference between max errors is less
@@ -310,9 +312,9 @@ int main() {
 	// Upper and lower limits for the minimax approximation.
 	// Note that this is relative h_0 and not geodetic altitude.
 	mpreal lo = mpreal(ALT_LO_LIMIT, prec);
-	lo = lo + mpreal(util_geo::_static_stuff.b_mpfr) - h_0;
+	lo = lo + mpreal(util_mpgeo::mpfr_consts.b) - h_0;
 	mpreal hi = mpreal(ALT_HI_LIMIT, prec);
-	hi = hi + mpreal(util_geo::_static_stuff.a_mpfr) - h_0;
+	hi = hi + mpreal(util_mpgeo::mpfr_consts.a) - h_0;
 
 	// Numerical differentiation difference.
 	// Selecting a proper "h" is a non-trivial problem.
@@ -337,7 +339,7 @@ int main() {
 				std::function<mpreal(const mpreal &)> f = [&h_0, n](
 						const mpreal &h_c) {
 					auto integrand = [&h_c, &h_0, n](const mpreal &lat) {
-						return (util_geo::f_c(lat, h_c, h_0, prec) - lat) *
+						return (util_mpgeo::f_c(lat, h_c, h_0, prec) - lat) *
 							   sin(lat * 2 * n) / const_pi(prec) * 2;
 					};
 					// TODO(JO) Use something better than composite Simpson's.
@@ -346,7 +348,7 @@ int main() {
 					//  https://www.gnu.org/software/gsl/doc/html/integration.html#qawo-adaptive-integration-for-oscillatory-functions
 					//  This could lead to smaller number of samples required
 					//  and hence an overall speedup.
-					return util_geo::simpson_integration(
+					return util_mpgeo::simpson_integration(
 							integrand, const_pi(prec) / -2, const_pi(prec) / 2,
 							NR_INTEGRAL_SAMPLES, prec);
 				};
@@ -356,10 +358,10 @@ int main() {
 			std::function<mpreal(const mpreal &)> f = [&h_0, n](
 					const mpreal &h_c) {
 				auto integrand = [&h_c, &h_0, n](const mpreal &lat) {
-					return (util_geo::g_c(lat, h_c, h_0, prec) - h_c) *
+					return (util_mpgeo::g_c(lat, h_c, h_0, prec) - h_c) *
 						   cos(lat * 2 * n) / const_pi(prec) * 2;
 				};
-				return util_geo::simpson_integration(
+				return util_mpgeo::simpson_integration(
 						integrand, const_pi(prec) / -2, const_pi(prec) / 2,
 						NR_INTEGRAL_SAMPLES, prec);
 			};

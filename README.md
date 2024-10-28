@@ -58,7 +58,7 @@ example, a fast and coarse ECEF to geodetic transformation is performed with
 #include "ecef2geo_polynomial.hpp"
 int main() {
     xyz ecef = {-3097120.939, 918384.577, -5491360.698};  // Mount Everest.
-    lla geo = ecef2geo::ecef2lla_asina<2,1,2,0,6,8>(ecef);  // Max error ~0.41m.
+    lla geo = ecef2geo::ecef2lla_asina<2,1,2,0,7,8>(ecef);  // Max error ~0.41m.
     printf("%.6f, %.6f, %.1f\n", 180./M_PI*geo.lat, 180./M_PI*geo.lon, geo.alt);
     return 0;
 }
@@ -113,11 +113,16 @@ The transformation implementations only depend on the following parts of std:
 2. [std::copysign](https://en.cppreference.com/w/cpp/numeric/math/copysign)
 3. [std::abs](https://en.cppreference.com/w/cpp/numeric/math/abs)
 
-all of which are found in cmath. Some handling of special cases for very low 
-polynomial orders uses [std::enable_if](https://en.cppreference.com/w/cpp/types/enable_if),
-which requires C++11. However, this is only for performance for these corner 
-cases and can normally be removed which should make the implementations 
-compilable with C++98.
+all of which are found in cmath. The implementations are directly compilable 
+with C++17. The limiting component is some handling of special cases for very 
+low polynomial orders using [std::enable_if](https://en.cppreference.com/w/cpp/types/enable_if),
+which requires C++17. However, this is only for performance, for these corner 
+cases, and can normally be removed. This will make the code compilable with 
+C++11. Below this, the trigonometric approximations uses fixed size integers 
+(int64_t and uint64_t) and the generated code uses the constexpr keyword. 
+However, if required, these can easily be removed making the implementations 
+compilable with C++98. If required, specific transformation approximations, 
+i.e. specific template specializationas, can easily be used in plain C-code. 
 
 The coefficient computations have all kinds of std dependencies and depend 
 on the following libraries (license in parenthesis):
