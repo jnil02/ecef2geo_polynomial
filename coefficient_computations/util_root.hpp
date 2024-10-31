@@ -22,6 +22,8 @@ using namespace mpfr;
  * @param f Function to find the root of.
  * @param a Lower root interval limit.
  * @param b Upper root interval limit.
+ * @param ya Function value at a.
+ * @param yb Function value at b.
  * @param prec Bits of precision of arithmetics.
  * @param epsilon Precision below which the root should be found. If <=0.0, the
  *                maximum ulp of the interval [a,b] is used.
@@ -34,7 +36,7 @@ using namespace mpfr;
  */
 inline mpreal
 itp_mpreal(std::function<mpreal(const mpreal &)> &f, mpreal a, mpreal b,
-		   mp_prec_t prec,
+		   mpreal ya, mpreal yb, mp_prec_t prec,
 		   const mpreal &epsilon = 1e-10,
 		   const mpreal &k1 = 0.0,
 		   const mpreal &k2 = 2.0, const mpreal &n0 = 1.0) {
@@ -45,6 +47,7 @@ itp_mpreal(std::function<mpreal(const mpreal &)> &f, mpreal a, mpreal b,
 	if (a >= b) {
 //        fprintf(stderr, "Warning. ITP root interval limits are swapped.");
 		mpfr::swap(a, b);
+		mpfr::swap(ya, yb);
 	}
 	// If k1 <=0 then the default value of k1, based on a and b.
 	mpreal k1set;
@@ -79,13 +82,6 @@ itp_mpreal(std::function<mpreal(const mpreal &)> &f, mpreal a, mpreal b,
 	} else {
 		_epsilon = epsilon;
 	}
-	// Check whether the root lies on a limit of the input interval.
-	mpreal ya;
-	ya.set_prec(prec);
-	ya = f(a);
-	mpreal yb;
-	yb.set_prec(prec);
-	yb = f(b);
 
 	// Check that f(a) and f(b) are finite.
 	if (_isinf(ya) || _isnan(ya) || _isinf(yb) || _isnan(yb)) {
@@ -127,7 +123,7 @@ itp_mpreal(std::function<mpreal(const mpreal &)> &f, mpreal a, mpreal b,
 	for_rk = std::pow(2.0, n0 - 1 + log2e + ceil(log2bma - log2e));
 	// Initialise the counter k and implement the loop.
 	int k = 0;
-	mpreal xf, x12, delta, rk, xt, xITP, yITP, interval;
+	mpreal xf, x12, delta, rk, xt, xITP, yITP, interval, tmp;
 	xf.set_prec(prec);
 	x12.set_prec(prec);
 	delta.set_prec(prec);
@@ -136,8 +132,9 @@ itp_mpreal(std::function<mpreal(const mpreal &)> &f, mpreal a, mpreal b,
 	xITP.set_prec(prec);
 	yITP.set_prec(prec);
 	interval.set_prec(prec);
+	tmp.set_prec(prec);
 	interval = b - a;
-	while (interval > 2.0 * _epsilon) {
+	while (interval >= 2.0 * _epsilon) {
 		// Interpolation. Regular falsi, equation (5)
 		xf = (yb * a - ya * b) / (yb - ya);
 		// Truncation
@@ -173,13 +170,49 @@ itp_mpreal(std::function<mpreal(const mpreal &)> &f, mpreal a, mpreal b,
 			yb = yITP;
 		}
 		root = (a + b) * 0.5;
-		interval = b - a;
+		// Ensure that if the interval cannot become smaller, break.
+		tmp = b - a;
+		if (interval == tmp)
+			break;
+		interval = tmp;
 		// Update the first term of rk
 		for_rk *= 0.5;
 		k += 1;
 	}
 	return root;
 }
+
+/** ITP root search of f on the interval [a,b].
+ *
+ * If f(a) and f(b) have equal sign, the extremum closest to zero is returned.
+ *
+ * @param f Function to find the root of.
+ * @param a Lower root interval limit.
+ * @param b Upper root interval limit.
+ * @param prec Bits of precision of arithmetics.
+ * @param epsilon Precision below which the root should be found. If <=0.0, the
+ *                maximum ulp of the interval [a,b] is used.
+ * @param k1 R+
+ * @param k2 in [1,1+phi] where phi = 1/2(1+sqrt(5)) is the golden ratio. k2 is
+ *           the asymptotic order of convergence.
+ * @param n0
+ * @return The value x in [a,b] for which f(x) == 0 or NAN if no such value
+ *         could be found.
+ */
+inline mpreal
+itp_mpreal(std::function<mpreal(const mpreal &)> &f, const mpreal &a,
+		   const mpreal &b, mp_prec_t prec,
+		   const mpreal &epsilon = 1e-10,
+		   const mpreal &k1 = 0.0,
+		   const mpreal &k2 = 2.0, const mpreal &n0 = 1.0) {
+	mpreal ya, yb;
+	ya.set_prec(prec);
+	yb.set_prec(prec);
+	ya = f(a);
+	yb = f(b);
+	return itp_mpreal(f, a, b, ya, yb, prec, epsilon, k1, k2, n0);
+}
+
 
 
 /** Bisection root search of f on the open interval (lo,hi).
@@ -192,13 +225,15 @@ itp_mpreal(std::function<mpreal(const mpreal &)> &f, mpreal a, mpreal b,
  *          (lo,hi).
  * @param lo Lower interval limit.
  * @param hi Upper interval limit.
+ * @param f_lo Function value at lower limit.
+ * @param f_hi Function value at upper limit.
  * @param prec Precision of the arithmetics.
  * @return The root of f on (lo,hi) or the f(lo) or f(hi) closest to 0.
  */
 mpreal
 bisection_search(std::function<mpreal(const mpreal &)> &f, mpreal lo, mpreal hi,
-				 mp_prec_t prec) {
-	if (f(hi) < f(lo))
+				 const mpreal &f_lo, const mpreal &f_hi, mp_prec_t prec) {
+	if (f_hi < f_lo)
 		mpfr::swap(lo, hi);
 	// Initialize mid point value.
 	mpreal mid;
@@ -217,6 +252,30 @@ bisection_search(std::function<mpreal(const mpreal &)> &f, mpreal lo, mpreal hi,
 		mid = (lo + hi) / 2;
 	}
 	return mid;
+}
+
+/** Bisection root search of f on the open interval (lo,hi).
+ *
+ * Values given to the function is of specified precision.
+ * Computes the root to given precision.
+ * Only evaluates f in [lo,hi].
+ *
+ * @param f Function to compute the root of. Assumed monotone over the interval
+ *          (lo,hi).
+ * @param lo Lower interval limit.
+ * @param hi Upper interval limit.
+ * @param prec Precision of the arithmetics.
+ * @return The root of f on (lo,hi) or the f(lo) or f(hi) closest to 0.
+ */
+mpreal
+bisection_search(std::function<mpreal(const mpreal &)> &f, const mpreal &lo,
+				 const mpreal &hi, mp_prec_t prec) {
+	mpreal f_lo, f_hi;
+	f_lo.set_prec(prec);
+	f_hi.set_prec(prec);
+	f_lo = f(lo);
+	f_hi = f(hi);
+	return bisection_search(f, lo, hi, f_lo, f_hi, prec);
 }
 
 /** Find extremum value for a concave function over the interval (lo,hi).
@@ -244,14 +303,16 @@ mpreal find_max(std::function<mpreal(const mpreal &)> &f, const mpreal &h,
 		return ((f(x + h) - f(x - h)) / (h * 2));
 	};
 
-	// Check endpoint derivatives and adjust limits accordingly.
-	if (backward_difference(hi) < forward_difference(lo))
-		swap(lo, hi);
-
-	mpreal res;
+	lo.set_prec(prec);
+	hi.set_prec(prec);
+	mpreal res, f_lo, f_hi;
 	res.set_prec(prec);
-//    res = bisection_search(midpoint_difference, lo, hi, prec);
-	res = itp_mpreal(midpoint_difference, lo, hi, prec, 0.0);
+	f_lo.set_prec(prec);
+	f_hi.set_prec(prec);
+	f_lo = forward_difference(lo);
+	f_hi = backward_difference(hi);
+//    res = bisection_search(midpoint_difference, lo, hi, f_lo, f_hi, prec);
+	res = itp_mpreal(midpoint_difference, lo, hi, f_lo, f_hi, prec);
 	return res;
 }
 

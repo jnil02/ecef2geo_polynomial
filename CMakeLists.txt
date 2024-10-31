@@ -30,6 +30,8 @@ add_executable(main_multiplicative
         )
 target_link_libraries(main_multiplicative
         mpfr
+        mplapack_mpfr
+        mpblas_mpfr
         sollya
         )
 

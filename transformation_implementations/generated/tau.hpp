@@ -11,7 +11,7 @@ namespace ecef2geo {
 constexpr double TAU_H_MIN = -5.00000000000000000e+03;
 constexpr double TAU_H_MAX = 1.00000000000000000e+05;
 constexpr double TAU_DELTA_MIN = 0.00000000000000000e+00;
-constexpr double TAU_DELTA_MAX = 1.13349674431948401e-05;
+constexpr double TAU_DELTA_MAX = 1.1334967451904287e-5;
 
 namespace priv {
 
@@ -26,13 +26,13 @@ namespace priv {
  */
 template<int L> inline double tau(double w, double d) = delete;  // Only allow provided specializations.
 template<> inline double tau<0>(double w, double d) { return 0.0; }
-template<> inline double tau<1>(double w, double d) { return w * 9.9999905541991507e-01; }
-template<> inline double tau<2>(double w, double d) { return w * 9.9999905541991507e-01; }
-template<> inline double tau<3>(double w, double d) { return w * ( 9.9999999999986617e-01 + -1.6666657220863013e-01 * d ); }
-template<> inline double tau<4>(double w, double d) { return w * ( 9.9999999999986617e-01 + -1.6666657220863013e-01 * d ); }
-template<> inline double tau<5>(double w, double d) { double d2 = d * d; return w * ( 1.0000000000000000e+00 + -1.6666666666665233e-01 * d + 8.3333299598317599e-03 * d2 ); }
-template<> inline double tau<6>(double w, double d) { double d2 = d * d; return w * ( 1.0000000000000000e+00 + -1.6666666666665233e-01 * d + 8.3333299598317599e-03 * d2 ); }
-template<> inline double tau<7>(double w, double d) { double d2 = d * d; return w * ( 1.0000000000000000e+00 + -1.6666666666666667e-01 * d + (8.3333333333328908e-03 + -1.9841263594044442e-04 * d) * d2 ); }
+template<> inline double tau<1>(double w, double d) { return w * 9.9999905541991435e-01; }
+template<> inline double tau<2>(double w, double d) { return w * 9.9999905541991435e-01; }
+template<> inline double tau<3>(double w, double d) { return w * ( 9.9999999999986617e-01 + -1.6666657220863006e-01 * d ); }
+template<> inline double tau<4>(double w, double d) { return w * ( 9.9999999999986617e-01 + -1.6666657220863006e-01 * d ); }
+template<> inline double tau<5>(double w, double d) { double d2 = d * d; return w * ( 1.0000000000000000e+00 + -1.6666666666665233e-01 * d + 8.3333299598317573e-03 * d2 ); }
+template<> inline double tau<6>(double w, double d) { double d2 = d * d; return w * ( 1.0000000000000000e+00 + -1.6666666666665233e-01 * d + 8.3333299598317573e-03 * d2 ); }
+template<> inline double tau<7>(double w, double d) { double d2 = d * d; return w * ( 1.0000000000000000e+00 + -1.6666666666666667e-01 * d + (8.3333333333328908e-03 + -1.9841263594044437e-04 * d) * d2 ); }
 
 }  // namespace ecef2geo
 }  // namespace priv

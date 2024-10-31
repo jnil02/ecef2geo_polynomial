@@ -10,25 +10,25 @@
 #include "settings.hpp"
 #include "util_eval.hpp"
 #include "remez_sollya.hpp"
+#include "util_root.hpp"  // find_max
+#include "util_mpgeo.hpp"  // f_c
+#include "mplapack/mpreal.h"
 
 #define _USE_MATH_DEFINES
-
 #include <cmath>  // std::sqrt, std::cbrt, std::atan, std::sin, std::cos.
 #include <vector>  // std::vector.
 #include <iostream>  // std::cout.
-//#include <iomanip> // std::setprecision.
 #include <limits>  // std::numeric_limits.
 #include <ostream>  // std::endl.
+#include <string>  // std::basic_string
 
 // Just to make the code more compact.
 using str_vec = std::vector<std::string>;
 
-// Bits of precision for Sollya computations.
-static constexpr int BITS_OF_PRECISION = 200;
-
-// Samples for delta_max computations.
-const int ALT_SAMPLES = 10000;
-const int PHI_C_SAMPLES = 10000;
+// Bits of precision for Sollya amd mpfr computations.
+constexpr mp_prec_t prec = 200;
+// Mpfr consts with appropriate precision.
+wgs84_mpfr_constants util_mpgeo::mpfr_consts = wgs84_mpfr_constants(prec);
 
 static const char *sigma_preamble =
 		"/*\n"
@@ -81,156 +81,6 @@ static const char *tau_postamble =
 		"}  // namespace priv\n"
 		"\n#endif // ECEF2GEO_TAU_HPP\n";
 
-/* TODO(JO)
- * Copy-and-past of reference transformation from ecef2geo_reference.hpp. These
- * are used to compute "max delta". The copy-and-past is just to avoid cross
- * includes between different parts of the project. Preferably, here we should use
- * the multiprecision reference transformation of this part of the project but
- * given the ineffectiveness of computations approach (brute force sampling),
- * this would take a long time. "max delta" is benign so we don't really need
- * multiprecision but to avoid this code duplication we should do something
- * better.
- */
-namespace ecef2geo_reference {
-
-struct xyz {
-	double x;
-	double y;
-	double z;
-};
-
-// Primary WGS84 constants.
-constexpr double a = 6378137.0;  // Semi-major axis / equatorial radius.
-constexpr double f = 1.0 / 298.257223563;  // Flattening.
-// Derived WGS84 constants.
-constexpr double b = a - f * a;  // Semi-minor axis / polar radius.
-constexpr double e2 = 1.0 - (b * b) / (a * a);  // First eccentricity squared.
-// Note, constexpr sqrt is a gcc extension. If not available you may use:
-//constexpr double e = 0.08181919084262157;
-// However, in this case, you will have to make sure it matches the primary
-// constants a and f.
-constexpr double e = std::sqrt(e2);  // First eccentricity.
-
-// Some constants for Vermeille's 2011 transformation.
-constexpr double a2 = a * a;
-constexpr double b2 = b * b;
-constexpr double e4 = e2 * e2;
-constexpr double b2am2 = b2 / a2;
-constexpr double a3 = a2 * a;
-constexpr double a4 = a2 * a2;
-constexpr double am2 = 1. / a2;
-constexpr double bam2 = b / a2;
-constexpr double b2am4 = b2 / a4;
-constexpr double inv_6 = 1. / 6.;
-constexpr double e2_2 = e2 / 2;
-constexpr double e2bam3 = e2 * b / a3;
-constexpr double M_PI_6 = M_PI / 6.;
-constexpr double M_2_3 = (2. / 3.);
-constexpr double bam1 = b / a; // = 1 - f
-constexpr double bem1 = b / e;
-constexpr double e2bm1 = e2 / b;
-constexpr double c = M_SQRT1_2 - 1.;
-
-/** ECEF to geodetic coordinate transformation by Vermeille's 2011 method.
- *
- * Closed form ECEF to geodetic coordinate transformation as per:
- *
- * Vermeille, H, An analytical method to transform geocentric into geodetic
- * coorindates. J. Geod. (2011) 85:105-117. DOI 10.1007/s00190-010-0419-x
- *
- * Valid for all finite input ECEF coordinates.
- * ECEF coordinates on the singular disk are taken to be positive.
- *
- * @param ecef {x, y, z}
- * @return {latitude, longitude, altitude}
- */
-static inline double ecef2lat(xyz ecef) {
-	double& x = ecef.x;
-	double& y = ecef.y;
-	double& z = ecef.z;
-
-	double t2 = x * x + y * y;
-	double t = std::sqrt(t2);
-	double p = t2 * am2;
-	double q = z * z * b2am4;
-	double r = (p + q - e4) * inv_6;
-	double r38 = r * r * r * 8.;
-	double ev = r38 + e4 * p * q;
-
-	if (ev > 0) {
-		// Outside evolute.
-		double s = e2bam3 * std::abs(z) * t;
-		double sqrt_ev = std::sqrt(ev);
-		double c1 = sqrt_ev + s;
-		double c2 = sqrt_ev - s;
-		double u = r + 0.5 * std::cbrt(c1 * c1) + 0.5 * std::cbrt(c2 * c2);
-
-		double v = std::sqrt(u * u + e4 * q);
-		double w = e2_2 * (u + v - q) / v;
-		double k = (u + v) / (std::sqrt(w * w + u + v) + w);
-		double D = k / (k + e2) * t;
-		double d = std::sqrt(D * D + z * z);
-
-		return 2. * std::atan(z / (d + D));
-	} else if (q != 0) {
-		// On or inside evolute and not on singular disc.
-		double s = e2bam3 * std::abs(z) * t;  // std::sqrt(e4*p*q)
-		double up = M_2_3 * std::atan(s / (std::sqrt(-ev) + std::sqrt(-r38)));
-		double u = -4. * r * std::sin(up) * std::cos(M_PI_6 + up);
-
-		double v = std::sqrt(u * u + e4 * q);
-		double w = e2_2 * (u + v - q) / v;
-		double k = (u + v) / (std::sqrt(w * w + u + v) + w);
-		double D = k * t / (k + e2);
-		double d = std::sqrt(D * D + z * z);
-
-		return 2. * std::atan(z / (d + D));
-	} else {
-		// On the singular disc (including center of earth).
-		// Values are taken to have positive latitude.
-		double h = -bem1 * std::sqrt(e2 - p);
-		return 2. * std::atan(std::sqrt(e4 - p)
-									/ (-e2bm1 * h + bam1 * std::sqrt(p)));
-	}
-}
-} // namespace ecef2geo_reference
-
-/** Compute maximum value of "delta".
- *
- * This is the range for multiplicative corrections.
- * Computes maximum value by brute force sampling over phi_c and the specified
- * altitude range.
- *
- * @param p_min Minimum spherical altitude.
- * @param p_max Maximum spherical altitude.
- * @return The maximum value of delta within the altitude range.
- */
-static double compute_max_delta(double p_min, double p_max) {
-	auto ps = std::vector<double>();
-	for (int i = 0; i < ALT_SAMPLES - 1; ++i)
-		ps.emplace_back(p_min + (p_max - p_min) * i / ALT_SAMPLES);
-	ps.emplace_back(p_max);
-	auto phi_cs = std::vector<double>();
-	for (int i = 0; i < PHI_C_SAMPLES - 1; ++i)
-		phi_cs.emplace_back(M_PI_2 * i / PHI_C_SAMPLES);
-	phi_cs.emplace_back(M_PI_2);
-
-	double max_delta = -std::numeric_limits<double>::infinity();
-	for (auto p: ps) {
-		for (auto phi_c: phi_cs) {
-			double sin_phi_c = std::sin(phi_c);
-			double cos_phi_c = std::cos(phi_c);
-			ecef2geo_reference::xyz ecef = {cos_phi_c * p, 0.0, sin_phi_c * p};
-			double lat = ecef2geo_reference::ecef2lat(ecef);
-			double diff = lat - phi_c;
-			double de = diff * diff;
-			if (max_delta < de)
-				max_delta = de;
-		}
-	}
-	return max_delta;
-}
-
 /** Divide one integer by another, rounding towards minus infinity.
  *
  * http://www.microhowto.info/howto/round_towards_minus_infinity_when_dividing_integers_in_c_or_c++.html
@@ -248,17 +98,35 @@ int div_floor(int x, int y) {
 
 int main() {
 	// Compute the value range of the approximations.
-	const double lo = ALT_LO_LIMIT + ecef2geo_reference::b;
-	const double hi = ALT_HI_LIMIT + ecef2geo_reference::a;
+	// The minimum delta is by definition zero, at the poles.
 	const double DELTA_MIN = 0.0;
-	double DELTA_MAX = compute_max_delta(lo, hi);
-//	std::cout << std::setprecision(17) << DELTA_MAX << std::endl;
+	// In contrast, the maximum delta occurs at the lowest altitude.
+	mpreal h_c = mpreal(ALT_LO_LIMIT, prec) + mpreal(util_mpgeo::mpfr_consts.b);
+	mpreal h_0 = mpreal(ALT_REFERENCE, prec);
+	// Numerical differentiation difference.
+	// Selecting a proper "h" is a non-trivial problem.
+	// See https://en.wikipedia.org/wiki/Numerical_differentiation.
+	// Selecting a too low value will make the algorithm not converge.
+	mpreal h;
+	h.set_prec(prec);
+	h = mul_2si(const_pi(prec) / 2, -(prec / 4), MPFR_RNDN);
+	// Squared latitude to geocentric latitude difference.
+	std::function<mpreal(const mpreal &)> f = [&h_c, &h_0](const mpreal &lat) {
+		mpreal diff = util_mpgeo::f_c(lat, h_c, h_0, prec) - lat;
+		return diff * diff;
+	};
+	mpreal DELTA_MAX_LAT = find_max(f, h, 0.0, const_pi(prec) * 2 - 0.1, prec);
+	mpreal DELTA_MAX_VAL;
+	DELTA_MAX_VAL.set_prec(prec);
+	DELTA_MAX_VAL = f(DELTA_MAX_LAT);
+	std::basic_string<char> DELTA_MAX_STR = DELTA_MAX_VAL.to_string(17);
+	const char* DELTA_MAX = DELTA_MAX_STR.c_str();
 
 	// Initialize Sollya.
 	sollya_lib_init();
-	sollya_obj_t prec;
-	prec = SOLLYA_CONST_SI64(BITS_OF_PRECISION);
-	sollya_lib_set_prec(prec);
+	sollya_obj_t sollya_prec;
+	sollya_prec = SOLLYA_CONST_SI64(prec);
+	sollya_lib_set_prec(sollya_prec);
 
 	// Open files and write preamble, ranges and protos for the approximations.
 	FILE *fp_sig = fopen((CODEGEN_FOLDER + "sigma.hpp").c_str(), "w");
@@ -267,7 +135,7 @@ int main() {
 	fprintf(fp_sig, "constexpr double SIGMA_H_MIN = %.17e;\n", ALT_LO_LIMIT);
 	fprintf(fp_sig, "constexpr double SIGMA_H_MAX = %.17e;\n", ALT_HI_LIMIT);
 	fprintf(fp_sig, "constexpr double SIGMA_DELTA_MIN = %.17e;\n", DELTA_MIN);
-	fprintf(fp_sig, "constexpr double SIGMA_DELTA_MAX = %.17e;\n\n", DELTA_MAX);
+	fprintf(fp_sig, "constexpr double SIGMA_DELTA_MAX = %s;\n\n", DELTA_MAX);
 	fprintf(fp_sig, "%s", sigma_proto);
 	FILE *fp_tau = fopen((CODEGEN_FOLDER + "tau.hpp").c_str(), "w");
 	fprintf(fp_tau, "%s", tau_preamble);
@@ -275,13 +143,13 @@ int main() {
 	fprintf(fp_tau, "constexpr double TAU_H_MIN = %.17e;\n", ALT_LO_LIMIT);
 	fprintf(fp_tau, "constexpr double TAU_H_MAX = %.17e;\n", ALT_HI_LIMIT);
 	fprintf(fp_tau, "constexpr double TAU_DELTA_MIN = %.17e;\n", DELTA_MIN);
-	fprintf(fp_tau, "constexpr double TAU_DELTA_MAX = %.17e;\n\n", DELTA_MAX);
+	fprintf(fp_tau, "constexpr double TAU_DELTA_MAX = %s;\n\n", DELTA_MAX);
 	fprintf(fp_tau, "%s", tau_proto);
 
 	// Minimax approximation arguments.
 	sollya_obj_t range, low, high, sigma, tau;
 	low = SOLLYA_CONST_SI64(DELTA_MIN);
-	high = SOLLYA_CONST(DELTA_MAX);
+	high = SOLLYA_CONST(DELTA_MAX_VAL);
 	range = sollya_lib_range(low, high);
 	// Truncated series approximations, well below double precision accuracy,
 	// of sigma and tau. Note that the variable of sigma and tau is small
@@ -382,6 +250,6 @@ int main() {
 	sollya_lib_clear_obj(range);
 	sollya_lib_clear_obj(low);
 	sollya_lib_clear_obj(high);
-	sollya_lib_clear_obj(prec);
+	sollya_lib_clear_obj(sollya_prec);
 	sollya_lib_close();
 }

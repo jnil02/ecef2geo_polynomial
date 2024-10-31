@@ -86,12 +86,12 @@ static inline lla ecef2lla(xyz ecef) {
 	// around the date line.
 	double lon = c * std::abs(y) < t + x ?
 				 2. * std::atan(y / (t + x)) : t + y < c * std::abs(x)
-											   ? -M_PI_2 + 2. * std::atan(x / (t - y))
-											   : M_PI_2 - 2. * std::atan(x / (t + y));
+				 ? -M_PI_2 + 2. * std::atan(x / (t - y))
+				 : M_PI_2 - 2. * std::atan(x / (t + y));
 
 	if (ev > 0) {
 		// Outside evolute.
-		double s = e2bam3 * std::abs(z) * t;
+		double s = e2bam3 * std::abs(z) * t;  // std::sqrt(e4*p*q)
 		double sqrt_ev = std::sqrt(ev);
 		double c1 = sqrt_ev + s;
 		double c2 = sqrt_ev - s;
