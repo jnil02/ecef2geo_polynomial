@@ -34,7 +34,7 @@ using ostrstream = std::ostringstream;
 // TODO(JO) It is unclear why such a large number of bits is required.
 //  Something is clearly ill conditioned.
 // Number of bits of precision in the computations.
-// 200 is required to get stable results for high coefficients. Reasonable
+// 200 is required to get stable results for high order coefficients. Reasonable
 // results can be attained with 100. 53 corresponds to double. (Multiplying with
 // 0.3 gives roughly the decimal precision.)
 constexpr mp_prec_t prec = 200;
@@ -260,7 +260,7 @@ std::string gen_2var_poly(const GiNaC::ex &expr, const GiNaC::symbol &u,
 			else {
 				// To see the expressions resulting in the exception below,
 				// uncomment below and comment out exception.
-//                s << omega_u_coef;
+//                s << u_coef;
 				throw std::invalid_argument("Non-numeric coefficient.");
 			}
 			u_coefs_str.emplace_back(s.str());

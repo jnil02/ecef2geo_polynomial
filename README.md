@@ -1,7 +1,7 @@
 
 # Minimax polynomial ECEF to geodetic coordinate transformation approximations
 
-This project contains transformation implementations and related coefficient
+This repository contains transformation implementations and related coefficient
 computations and polynomial evaluation code generation for:
 
 <b>Nilsson, J.-O. Minimax polynomial ECEF to geodetic coordinate transformation 
@@ -159,4 +159,4 @@ part is only meant to be used for offline code generation. The GiNaC (and
 CLN) could be worked around, if necessary.
 
 ## Contact
-jnil02 at kth period se.
+john_nil at hotmail period se.
