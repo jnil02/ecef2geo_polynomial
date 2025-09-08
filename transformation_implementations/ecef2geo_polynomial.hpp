@@ -20,8 +20,7 @@
 #include "generated/tau.hpp"
 
 // Generated polynomial approximation for trigonometric functions.
-#include "generated/xi.hpp"
-#include "generated/chi.hpp"
+#include "ecef2geo_common.hpp"
 
 #include <cstdint>  // int64_t, uint64_t
 #define _USE_MATH_DEFINES
@@ -51,106 +50,6 @@ static_assert(OMEGA_H_MIN == TAU_H_MIN, "Nonmatching H_min.");
 static_assert(SIGMA_DELTA_MIN == TAU_DELTA_MIN, "Nonmatching delta_max.");
 static_assert(SIGMA_DELTA_MAX == TAU_DELTA_MAX, "Nonmatching delta_max.");
 static_assert(OMEGA_H_0 == MU_H_0, "Nonmatching H_0.");
-
-/*
- * Trigonometric function approximations used by the transformation
- * approximations. Placed in the private namespace to avoid bloating the outer
- * namespace.
- */
-namespace priv {
-
-/** Asin approximation.
- *
- * Has a discontinuous derivative at 0.
- *
- * @tparam N Polynomial degree of the approximation.
- * @param z argument within the range [0,1]
- * @return Arcsine approximation in the range [pi/2,-pi/2].
- */
-template<int N>
-inline double asin_approx(double z) {
-	double x = std::abs(z);
-	return std::copysign(M_PI_2 - std::sqrt(1.0 - x) * chi<N>(x), z);
-}
-
-/** Two argument atan minimax approximation.
- *
- * If the argument to atan can be split into a divident and a positive divisor,
- * an atan approximation for [-1,1] can be mapped to the range (-inf,inf)
- * without any conditional code or extra divide at the cost of two extra
- * additions. This is similar to atan2 but where the two arguments are used to
- * improve implementation performance.
- *
- * Given a minimax approximation of atan over [-1,1]
- *   atan(X) \approx \sum_{i=0}^{N}c_{2i+1}X^{2i+1} \forall x\in [-1,1]
- *           = f(x)
- * An equally good approximation of [0,inf) is
- *   atan(X) \approx f((X-1)/X+1)) \forall x\in [0,inf]
- * Now with X=|y|/x
- *   (X-1)/X+1) = (|y|/x-1)/(|y|/x+1)
- *              = ((|y|-x)/x)/((|y|+x)/x)
- *              = (|y|-x)/(|y|+x)
- * Finally, the output can be mapped to the full output range with the sign of
- * y, i.e.
- * atan(y/x) = copysign(f((|y| - x) / (|y| + x)), y) \forall x\in [0,inf]
- *
- * @tparam N Polynomial order of minimax polynomial.
- * @param y dividend of atan argument.
- * @param x __positive__ divisor of atan argument.
- * @return Approximation of atan(y/x)
- */
-template<int N>
-inline double atan_approx(double y, double x) {
-	double abs_y = std::abs(y);
-	double X = (abs_y - x) / (abs_y + x);
-	return std::copysign(M_PI_4 + xi<N>(X), y);
-}
-
-/** Atan2 approximation from two argument atan approximation on [-inf,inf)
- *
- * Given an two argument atan approximation atan(y/x) = f(y,x) on [0,inf), the
- * approximation can be mapped the full angular range, i.e. atan2, by
- *
- *                      f(y,x) : y>0, x>0
- *   atan2(y,x) =  pi - f(y,x) : y>0, x<0
- *                -pi + f(y,x) : y<0, x<0
- *                    - f(y,x) : y<0, x>0
- *
- * All bits and pieces apart from f(y,x) can easily be implemented with bit
- * manipulations:
- *  - The sign of the f(y,x) is given by the xor of the signbits of x and y.
- *  - Further, the sign of the offset is the "signbit of x" & "signbit of y".
- *  - Finally, the magnitude of the offset is "signbit of x" times pi.
- *
- *  Note that y=0 and x=0 gives NaN.
- *
- * @tparam N Polynomial order of minimax polynomial.
- * @param y dividend of atan2 argument.
- * @param x divisor of atan2 argument.
- * @return Approximation of atan2(y,x)
- */
-template<int N>
-inline double atan2_approx(double y, double x) {
-	// Just some constants for bit manipulation of double.
-	constexpr int _63 = (sizeof(double) * 8 - 1);
-	constexpr int _62 = _63 - 1;
-
-	// Offset for the four quadrants.
-	int64_t offset =
-			((((*((int64_t *) &x)) & (*((int64_t *) &y))) >> _62) & -2) |
-			((*((uint64_t *) &x)) >> _63);
-
-	// XOR y and x to get a double with the sign of atan(z).
-	uint64_t xXORy = (*((uint64_t *) &x)) ^ (*((uint64_t *) &y));
-
-	double _xa = std::abs(x);
-	double _ya = std::abs(y);
-	double _x = (_ya - _xa) / (_ya + _xa);
-	return M_PI * (double) offset +
-		   std::copysign(M_PI_4 + xi<N>(_x), *((double *) &xXORy));;
-}
-
-}  // namespace priv
 
 
 /** ECEF coordinate to geodetic coordinate (n-vector, altitude) transformation.

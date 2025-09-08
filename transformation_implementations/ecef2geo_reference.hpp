@@ -9,25 +9,10 @@
  */
 
 #include "coordinate_structs.hpp"
+#include "ecef2geo_common.hpp"
 
 #define _USE_MATH_DEFINES
 #include <cmath>  // sqrt, sin, cos, atan, atan2, cbrt, abs
-
-namespace wgs84 {
-
-// Primary WGS84 constants.
-constexpr double a = 6378137.0;  // Semi-major axis / equatorial radius.
-constexpr double f = 1.0 / 298.257223563;  // Flattening. f = (a - b) / a
-// Derived WGS84 constants.
-constexpr double b = a - f * a;  // Semi-minor axis / polar radius.
-constexpr double e2 = 1.0 - (b * b) / (a * a);  // First eccentricity squared.
-// Note, constexpr sqrt is a gcc extension. If not available you may use:
-//constexpr double e = 0.08181919084262157;
-// However, in this case, you will have to make sure it matches the primary
-// constants a and f.
-constexpr double e = std::sqrt(e2);  // First eccentricity.
-
-}  // namespace wgs84
 
 namespace vermeille {
 
@@ -50,8 +35,8 @@ constexpr double inv_6 = 1. / 6.;
 constexpr double e2_2 = e2 / 2;
 constexpr double e2bam3 = e2 * b / a3;
 constexpr double M_PI_6 = M_PI / 6.;
-constexpr double M_2_3 = (2. / 3.);
-constexpr double bam1 = b / a; // = 1 - f
+constexpr double M_2_3 = 2. / 3.;
+constexpr double bam1 = b / a;  // = 1 - f
 constexpr double bem1 = b / e;
 constexpr double e2bm1 = e2 / b;
 constexpr double c = M_SQRT1_2 - 1.;
