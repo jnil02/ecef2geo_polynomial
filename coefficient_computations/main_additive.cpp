@@ -10,7 +10,7 @@
 
 #include "settings.hpp"
 #include "util_mpgeo.hpp"
-#include "util_eval.hpp"
+#include "util_sym.hpp"
 #include "remez_mp.hpp"
 
 #include <cstdio> // std::sprintf
@@ -53,13 +53,6 @@ constexpr double REL_ERR_MAX = 0.00001;
 // 32 samples give differences in the first digit.
 constexpr int NR_INTEGRAL_SAMPLES = 128;
 
-static const char *omega_preamble =
-		"/*\n"
-		" * Generated. DO NOT EDIT!\n"
-		" */\n\n"
-		"#ifndef ECEF2GEO_OMEGA_HPP\n"
-		"#define ECEF2GEO_OMEGA_HPP\n\n"
-		"namespace ecef2geo {\n\n";
 static const char *omega_proto =
 		"namespace priv {\n\n"
 		"/** Polynomial additive latitude correction\n"
@@ -74,20 +67,6 @@ static const char *omega_proto =
 		" * @return Minimax approximation of omega.\n"
 		" */\n"
 		"template<int N,int M> inline double omega(double u, double v) = delete;  // Only allow provided specializations.\n";
-static const char *omega_signature = "template<> inline double omega<%u,%u>(double u, double v) {";
-static const char *omega_postamble =
-		"\n}  // namespace\n"
-		"}  // namespace priv\n"
-		"\n#endif // ECEF2GEO_OMEGA_HPP\n";
-
-
-static const char *mu_preamble =
-		"/*\n"
-		" * Generated. DO NOT EDIT!\n"
-		" */\n\n"
-		"#ifndef ECEF2GEO_MU_HPP\n"
-		"#define ECEF2GEO_MU_HPP\n\n"
-		"namespace ecef2geo {\n\n";
 static const char *mu_proto =
 		"namespace priv {\n\n"
 		"/** Polynomial additive altitude correction\n"
@@ -102,11 +81,18 @@ static const char *mu_proto =
 		" * @return Minimax approximation of mu.\n"
 		" */\n"
 		"template<int N,int M> inline double mu(double u, double v) = delete;  // Only allow provided specializations.\n";
-static const char *mu_signature = "template<> inline double mu<%u,%u>(double u, double v) {";
-static const char *mu_postamble =
+static const char *signature = "template<> inline double %s<%u,%u>(double u, double v) {";
+static const char *preamble =
+		"/*\n"
+		" * Generated. DO NOT EDIT!\n"
+		" */\n\n"
+		"#ifndef ECEF2GEO_%s_HPP\n"
+		"#define ECEF2GEO_%s_HPP\n\n"
+		"namespace ecef2geo {\n\n";
+static const char *postamble =
 		"\n}  // namespace\n"
 		"}  // namespace priv\n"
-		"\n#endif // ECEF2GEO_MU_HPP\n";
+		"\n#endif // ECEF2GEO_%s_HPP\n";
 
 /** Struct for input parameters and results of Remez optimization.
  *
@@ -161,140 +147,6 @@ struct coef_struct {
 		delete[] coefs;
 	}
 };
-
-/** Construct GiNaC symbolic expression for mu.
- *
- * @param N Summation index limit N.
- * @param M Summation index limit M.
- * @param u Polynomial variable u.
- * @param v Polynomial variable v.
- * @param syms Symbols to use for the coefficients arranged in a nested array.
- * @return A GiNaC expression for mu given the input parameters.
- */
-GiNaC::ex mu_ex(int N, int M, GiNaC::symbol &u, GiNaC::symbol &v,
-				GiNaC::symbol syms[N_MAX + 1][M_MAX + 1]) {
-	GiNaC::ex mu_NM = u;
-	for (int m = 0; m <= M; ++m)
-		mu_NM += GiNaC::numeric(1, 2) * syms[0][m] * GiNaC::pow(u, m);
-	for (int n = 1; n <= N; ++n) {
-		GiNaC::ex sum;
-		for (int m = 0; m <= M; ++m)
-			sum += syms[n][m] * GiNaC::pow(u, m);
-		for (int k = 0; k <= n; ++k)
-			mu_NM += GiNaC::pow(GiNaC::numeric(-1), k) *
-					 GiNaC::binomial(2 * n, 2 * k) * GiNaC::pow(v, k) *
-					 GiNaC::pow(GiNaC::numeric(1) - v, n - k) * sum;
-	}
-	return mu_NM;
-}
-
-/** Construct GiNaC symbolic expression for omega.
- *
- * @param N Summation index limit N.
- * @param M Summation index limit M.
- * @param u Polynomial variable u.
- * @param v Polynomial variable v.
- * @param syms Symbols to use for the coefficients arranged in a nested array.
- * @return A GiNaC expression for omega given the input parameters.
- */
-GiNaC::ex omega_ex(int N, int M, GiNaC::symbol &u, GiNaC::symbol &v,
-				   GiNaC::symbol syms[N_MAX + 1][M_MAX + 1]) {
-	GiNaC::ex omega_NM;
-	for (int n = 1; n <= N; ++n) {
-		GiNaC::ex sum;
-		for (int m = 0; m <= M; ++m)
-			sum += syms[n][m] * GiNaC::pow(u, m);
-		for (int k = 0; k < n; ++k)
-			omega_NM += GiNaC::pow(GiNaC::numeric(-1), k) *
-						GiNaC::binomial(2 * n, 2 * k + 1) * GiNaC::pow(v, k) *
-						GiNaC::pow(GiNaC::numeric(1) - v, n - k - 1) * sum;
-	}
-	return omega_NM;
-}
-
-/** Generate a C-code evaluation schema from 2-var polynomial.
- *
- * @param expr The polynomial expression.
- * @param u Inner polynomial variable of expression.
- * @param v Outer polynomial variable of expression.
- * @param N Order of N.
- * @param M Order of U.
- * @param coefs Coefficient values.
- * @param syms Coefficient symbols.
- * @param n_min first n-index.
- * @return A C-code string representation for evaluating expr.
- */
-std::string gen_2var_poly(const GiNaC::ex &expr, const GiNaC::symbol &u,
-						  const GiNaC::symbol &v, int N, int M,
-						  coef_struct coefs[M_MAX + 1][N_MAX + 1],
-						  GiNaC::symbol syms[N_MAX + 1][M_MAX + 1],
-						  int n_min = 0) {
-	// Retrieve "v-coefficients".
-	GiNaC::lst v_coefs;
-	for (int i = expr.ldegree(v); i <= expr.degree(v); ++i)
-		v_coefs.append(expr.coeff(v, i));
-	// Loop over the "v-coefficients".
-	std::vector<std::string> v_coefs_str;
-	std::vector<int> us;
-	for (int i = 0; i < v_coefs.nops(); ++i) {
-		// Retrieve "u-coefficients".
-		std::vector<std::string> u_coefs_str;
-		for (int j = v_coefs[i].ldegree(u); j <= v_coefs[i].degree(u); ++j) {
-			GiNaC::ex u_coef = v_coefs[i].coeff(u, j);
-			// Substituting all coefficients with values.
-			for (int n = n_min; n <= N; ++n)
-				for (int m = 0; m <= M; ++m) {
-					// to_string gives full precision.
-					GiNaC::numeric b_nm = GiNaC::numeric(
-							coefs[M][n].coefs[m].to_string().c_str());
-					u_coef = u_coef.subs(syms[n][m] == b_nm);
-				}
-			std::ostringstream s;
-			s << std::setprecision(17);
-			if (GiNaC::is_a<GiNaC::numeric>(u_coef))
-				// TODO(JO) It would be nice to use std::format but support is
-				//  so far limited.
-				//  https://stackoverflow.com/questions/554063/how-do-i-print-a-double-value-with-full-precision-using-cout
-				// s << std::format("{}", GiNaC::ex_to<GiNaC::numeric>(omega_u_coef).to_double());
-				s << GiNaC::ex_to<GiNaC::numeric>(u_coef).to_double();
-			else {
-				// To see the expressions resulting in the exception below,
-				// uncomment below and comment out exception.
-//                s << u_coef;
-				throw std::invalid_argument("Non-numeric coefficient.");
-			}
-			u_coefs_str.emplace_back(s.str());
-		}
-		std::string inner_coef = print_poly(u_coefs_str, "u", us);
-		v_coefs_str.emplace_back(inner_coef);
-	}
-	std::vector<int> vs;
-	std::string poly_str = print_poly(v_coefs_str, "v", vs);
-	if (poly_str == "0")
-		poly_str = "0.0";
-	return print_exp(us, "u") + print_exp(vs, "v") + " return " + poly_str;
-}
-
-/** Construct the actual C-function for a 2-var polynomial.
- *
- * @param N Summation index limit N.
- * @param M Summation index limit M.
- * @param expr_str Expression string for the polynomial.
- * @param signature C-function signature.
- * @return A complete C-code function definition for the polynomial.
- */
-std::ostringstream
-expr2cfunc(int N, int M, const std::string &expr_str, const char *signature) {
-	std::ostringstream func;
-	// TODO(JO) Using std::format would be preferable but support is so far
-	//  limited.
-	//  https://stackoverflow.com/questions/554063/how-do-i-print-a-double-value-with-full-precision-using-cout
-	char signature_str[512];  // 512 characters should always be enough.
-	std::sprintf(signature_str, signature, N, M);
-	func << std::string(signature_str);
-	func << expr_str << "; }" << std::endl;
-	return func;
-}
 
 
 int main() {
@@ -411,7 +263,7 @@ int main() {
 	FILE *fp_mu = fopen((CODEGEN_FOLDER + "mu.hpp").c_str(), "w");
 
 	// Write some defines to the generated files used for compile-time asserts.
-	fprintf(fp_omega, "%s", omega_preamble);
+	fprintf(fp_omega, preamble, "OMEGA", "OMEGA");
 	fprintf(fp_omega, "// Minimax approximation ranges.\n");
 	fprintf(fp_omega, "constexpr double OMEGA_H_MIN = %.17e;\n", ALT_LO_LIMIT);
 	fprintf(fp_omega, "constexpr double OMEGA_H_MAX = %.17e;\n", ALT_HI_LIMIT);
@@ -420,7 +272,7 @@ int main() {
 		fprintf(fp_omega, "// For ensuring compile-time removal of h_0.\n");
 		fprintf(fp_omega, "#define H_0_IS_ZERO\n");
 	}
-	fprintf(fp_mu, "%s", mu_preamble);
+	fprintf(fp_mu, preamble, "MU", "MU");
 	fprintf(fp_mu, "// Minimax approximation ranges.\n");
 	fprintf(fp_mu, "constexpr double MU_H_MIN = %.17e;\n", ALT_LO_LIMIT);
 	fprintf(fp_mu, "constexpr double MU_H_MAX = %.17e;\n", ALT_HI_LIMIT);
@@ -435,18 +287,46 @@ int main() {
 	for (int N = 0; N <= N_MAX; ++N)
 		for (int M = 0; M <= M_MAX; ++M) {
 			GiNaC::ex om = omega_ex(N, M, u, v, syms).expand().eval();
-			std::string expr = gen_2var_poly(om, u, v, N, M, coefs_b, syms, 1);
-			ostrstream om_func = expr2cfunc(N, M, expr, omega_signature);
+			// Lambda for substituting symbolic coefficients in expression.
+			auto subs = [N, M, &coefs_b, &syms](GiNaC::ex u_coef) -> GiNaC::ex {
+				for (int n = 1; n <= N; ++n)
+					for (int m = 0; m <= M; ++m) {
+						// to_string gives full precision.
+						GiNaC::numeric b_nm = GiNaC::numeric(
+								coefs_b[M][n].coefs[m].to_string().c_str());
+						// M, n and m above designate the m:th coefficient of the
+						// M-coefficient approximation of the n:th sin/cos
+						// coefficient.
+						u_coef = u_coef.subs(syms[n][m] == b_nm);
+					}
+				return u_coef;
+			};
+			std::string expr = gen_2var_poly(om, u, v, subs);
+			ostrstream om_func = expr2cfunc(N, M, expr, signature, "omega");
 			fprintf(fp_omega, "%s", om_func.str().c_str());
 			GiNaC::ex mu = mu_ex(N, M, u, v, syms).expand().eval();
-			std::string mu_str = gen_2var_poly(mu, u, v, N, M, coefs_c, syms);
-			ostrstream mu_func = expr2cfunc(N, M, mu_str, mu_signature);
+			// Lambda for substituting symbolic coefficients in expression.
+			auto subs2 = [N, M, &coefs_c, &syms](GiNaC::ex u_coef) -> GiNaC::ex {
+				for (int n = 0; n <= N; ++n)
+					for (int m = 0; m <= M; ++m) {
+						// to_string gives full precision.
+						GiNaC::numeric b_nm = GiNaC::numeric(
+								coefs_c[M][n].coefs[m].to_string().c_str());
+						// M, n and m above designate the m:th coefficient of the
+						// M-coefficient approximation of the n:th sin/cos
+						// coefficient.
+						u_coef = u_coef.subs(syms[n][m] == b_nm);
+					}
+				return u_coef;
+			};
+			std::string mu_str = gen_2var_poly(mu, u, v, subs2);
+			ostrstream mu_func = expr2cfunc(N, M, mu_str, signature, "mu");
 			fprintf(fp_mu, "%s", mu_func.str().c_str());
 		}
 
 	// Clean up.
-	fprintf(fp_omega, "%s", omega_postamble);
+	fprintf(fp_omega, postamble, "OMEGA");
 	fclose(fp_omega);
-	fprintf(fp_mu, "%s", mu_postamble);
+	fprintf(fp_mu, postamble, "MU");
 	fclose(fp_mu);
 }
