@@ -135,28 +135,24 @@ on the following libraries (license in parenthesis):
 3. [Sollya](https://www.sollya.org/) 8.0 (CeCILL-C) Remez algorithm 
    implementation used for computing the multiplicative corrections and the 
    trigonometric function approximations.
-4. [GiNaC](https://www.ginac.de/) 1.8.7 (GPLv2+) Used for final computations 
-   of polynomial coefficients from polynomial coefficient expressions. 
-5. [CLN](https://www.ginac.de/CLN/) 1.3.6 - Class Library for Numbers (GPLv2+)
-    Supporting functionality for GiNaC.
+4. [SymEngine](https://github.com/symengine/symengine) (MIT) Symbolic 
+   manipulation for working (building, transforming, extracting coefficients, 
+   etc.) with symbolic polynomials.
+5. [GMP](LGPLv3) Arithmetic back-end for SymEngine.
 6. [TBB](https://github.com/oneapi-src/oneTBB) - Threading Building Blocks 
    (Apache 2.0) Used for parallel execution of coefficient computations. 
    Only to support the C++17 std::execution::par language feature.
-
-GPLv2+ means GPL version 2 with redistribution possible with any later GPL 
-licence, i.e. version 3.
 
 The coefficient computations require C++17. The project has so far only been 
 built with gcc on Linux.
 
 ## License
 
-The transformation implementations are distributed under the 2-clause BSD 
-license.
+The project is distributed under the 2-clause BSD license.
 
-The coefficient computation code is distributed under GPLv3. Note that this
-part is only meant to be used for offline code generation. The GiNaC (and 
-CLN) could be worked around, if necessary.
+Earlier versions had parts distributed under the GPLv3 license due to 
+linking with the GNU library GiNaC which was peviously used in place of the 
+SymEngine library.
 
 ## Contact
 john_nil at hotmail period se.

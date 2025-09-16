@@ -21,11 +21,11 @@
 #include <algorithm>  // For std::function etc.
 #include <vector>  // std::vector, std::begin, std::end.
 #include <ostream>  // std::ostringstream, std::endl.
-#include <iomanip>  // std::setprecision.
-#include <stdexcept>  // std::invalid_argument.
 #include <execution>  // For std::execution::par, i.e. parallel for loops.
 #include <chrono>  // For measuring elapsed time.
-#include <ginac/ginac.h>  // For final polynomial manipulation.
+
+#include <symengine/eval.h>
+#include <symengine/real_mpfr.h>
 
 // Just get rid of some long type names.
 using time_point = std::chrono::steady_clock::time_point;
@@ -252,11 +252,11 @@ int main() {
 	}
 
 	// Generate coefficient symbols to use in the symbolic polynomials.
-	GiNaC::symbol syms[N_MAX + 1][M_MAX + 1];
+	SymEngine::Expression syms[N_MAX + 1][M_MAX + 1];
 	for (int n = 0; n <= N_MAX; ++n)
 		for (int m = 0; m <= M_MAX; ++m)
-			syms[n][m] = GiNaC::symbol(
-					"c" + std::to_string(n) + std::to_string(m));
+			syms[n][m] = SymEngine::Expression(SymEngine::symbol(
+					"c" + std::to_string(n) + std::to_string(m)));
 
 	// Open files to which generated approximations/code is to be written.
 	FILE *fp_omega = fopen((CODEGEN_FOLDER + "omega.hpp").c_str(), "w");
@@ -283,41 +283,42 @@ int main() {
 	fprintf(fp_mu, "\n%s", mu_proto);
 
 	// Write the actual generated approximations.
-	GiNaC::symbol u("u"), v("v");
+	SymEngine::Expression u("u"), v("v");
 	for (int N = 0; N <= N_MAX; ++N)
 		for (int M = 0; M <= M_MAX; ++M) {
-			GiNaC::ex om = omega_ex(N, M, u, v, syms).expand().eval();
+			SymEngine::Expression om = SymEngine::expand(omega_ex(N, M, u, v, syms));
 			// Lambda for substituting symbolic coefficients in expression.
-			auto subs = [N, M, &coefs_b, &syms](GiNaC::ex u_coef) -> GiNaC::ex {
+			auto subs = [N, M, &coefs_b, &syms](const SymEngine::Expression& u_coef) -> SymEngine::Expression {
+				std::map<SymEngine::RCP<const SymEngine::Basic>, SymEngine::RCP<const SymEngine::Basic>, SymEngine::RCPBasicKeyLess> sub_map;
 				for (int n = 1; n <= N; ++n)
 					for (int m = 0; m <= M; ++m) {
 						// to_string gives full precision.
-						GiNaC::numeric b_nm = GiNaC::numeric(
-								coefs_b[M][n].coefs[m].to_string().c_str());
+						sub_map[syms[n][m].get_basic()] = SymEngine::Expression(coefs_b[M][n].coefs[m].to_string()).get_basic();
 						// M, n and m above designate the m:th coefficient of the
 						// M-coefficient approximation of the n:th sin/cos
 						// coefficient.
-						u_coef = u_coef.subs(syms[n][m] == b_nm);
 					}
-				return u_coef;
+				return u_coef.subs(sub_map);
 			};
 			std::string expr = gen_2var_poly(om, u, v, subs);
 			ostrstream om_func = expr2cfunc(N, M, expr, signature, "omega");
 			fprintf(fp_omega, "%s", om_func.str().c_str());
-			GiNaC::ex mu = mu_ex(N, M, u, v, syms).expand().eval();
+			SymEngine::Expression mu = SymEngine::expand(mu_ex(N, M, u, v, syms));
 			// Lambda for substituting symbolic coefficients in expression.
-			auto subs2 = [N, M, &coefs_c, &syms](GiNaC::ex u_coef) -> GiNaC::ex {
+			auto subs2 = [N, M, &coefs_c, &syms](SymEngine::Expression u_coef) -> SymEngine::Expression {
+				std::map<SymEngine::RCP<const SymEngine::Basic>, SymEngine::RCP<const SymEngine::Basic>, SymEngine::RCPBasicKeyLess> sub_map;
 				for (int n = 0; n <= N; ++n)
 					for (int m = 0; m <= M; ++m) {
-						// to_string gives full precision.
-						GiNaC::numeric b_nm = GiNaC::numeric(
-								coefs_c[M][n].coefs[m].to_string().c_str());
+						// Construct a SymEngine object diretly from the mpreal object.
+						SymEngine::mpfr_class mc(coefs_c[M][n].coefs[m].operator mpfr_ptr());
 						// M, n and m above designate the m:th coefficient of the
 						// M-coefficient approximation of the n:th sin/cos
 						// coefficient.
-						u_coef = u_coef.subs(syms[n][m] == b_nm);
+						SymEngine::RCP<const SymEngine::Basic> mp_basic = SymEngine::real_mpfr(mc);
+						sub_map[syms[n][m].get_basic()] = mp_basic;
+//						sub_map[syms[n][m].get_basic()] = SymEngine::Expression(coefs_c[M][n].coefs[m].to_string()).get_basic();
 					}
-				return u_coef;
+				return u_coef.subs(sub_map);
 			};
 			std::string mu_str = gen_2var_poly(mu, u, v, subs2);
 			ostrstream mu_func = expr2cfunc(N, M, mu_str, signature, "mu");

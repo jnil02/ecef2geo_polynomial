@@ -43,6 +43,6 @@ target_link_libraries(main_additive
         mplapack_mpfr
         mpblas_mpfr
         tbb  # For std::execution::par
-        ginac  # Symbolic expressions.
-        cln  # Numbers in ginac.
+        symengine
+        gmp
         )
