@@ -1,5 +1,5 @@
 // Copyright (c) 2024, John-Olof Nilsson
-// Distributed under the terms of the GPLv3 License.
+// Distributed under the terms of the BSD 2-Clause License.
 
 /*
  * Utility functions for symbolic calculations.

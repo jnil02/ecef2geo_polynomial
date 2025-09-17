@@ -1,5 +1,5 @@
 // Copyright (c) 2024, John-Olof Nilsson
-// Distributed under the terms of the GPLv3 License.
+// Distributed under the terms of the BSD 2-Clause License.
 
 #ifndef ECEF2GEO_POLYNOMIAL_REMEZ_MP_HPP
 #define ECEF2GEO_POLYNOMIAL_REMEZ_MP_HPP
