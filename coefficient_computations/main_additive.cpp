@@ -292,11 +292,13 @@ int main() {
 				std::map<SymEngine::RCP<const SymEngine::Basic>, SymEngine::RCP<const SymEngine::Basic>, SymEngine::RCPBasicKeyLess> sub_map;
 				for (int n = 1; n <= N; ++n)
 					for (int m = 0; m <= M; ++m) {
-						// to_string gives full precision.
-						sub_map[syms[n][m].get_basic()] = SymEngine::Expression(coefs_b[M][n].coefs[m].to_string()).get_basic();
+						// Construct a SymEngine object directly from the mpreal object.
+						SymEngine::mpfr_class mc(coefs_b[M][n].coefs[m].operator mpfr_ptr());
 						// M, n and m above designate the m:th coefficient of the
 						// M-coefficient approximation of the n:th sin/cos
 						// coefficient.
+						SymEngine::RCP<const SymEngine::Basic> mp_basic = SymEngine::real_mpfr(mc);
+						sub_map[syms[n][m].get_basic()] = mp_basic;
 					}
 				return u_coef.subs(sub_map);
 			};
@@ -305,18 +307,17 @@ int main() {
 			fprintf(fp_omega, "%s", om_func.str().c_str());
 			SymEngine::Expression mu = SymEngine::expand(mu_ex(N, M, u, v, syms));
 			// Lambda for substituting symbolic coefficients in expression.
-			auto subs2 = [N, M, &coefs_c, &syms](SymEngine::Expression u_coef) -> SymEngine::Expression {
+			auto subs2 = [N, M, &coefs_c, &syms](const SymEngine::Expression& u_coef) -> SymEngine::Expression {
 				std::map<SymEngine::RCP<const SymEngine::Basic>, SymEngine::RCP<const SymEngine::Basic>, SymEngine::RCPBasicKeyLess> sub_map;
 				for (int n = 0; n <= N; ++n)
 					for (int m = 0; m <= M; ++m) {
-						// Construct a SymEngine object diretly from the mpreal object.
+						// Construct a SymEngine object directly from the mpreal object.
 						SymEngine::mpfr_class mc(coefs_c[M][n].coefs[m].operator mpfr_ptr());
 						// M, n and m above designate the m:th coefficient of the
 						// M-coefficient approximation of the n:th sin/cos
 						// coefficient.
 						SymEngine::RCP<const SymEngine::Basic> mp_basic = SymEngine::real_mpfr(mc);
 						sub_map[syms[n][m].get_basic()] = mp_basic;
-//						sub_map[syms[n][m].get_basic()] = SymEngine::Expression(coefs_c[M][n].coefs[m].to_string()).get_basic();
 					}
 				return u_coef.subs(sub_map);
 			};

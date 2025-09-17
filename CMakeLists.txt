@@ -46,3 +46,13 @@ target_link_libraries(main_additive
         symengine
         gmp
         )
+
+add_executable(main_fourier
+        coefficient_computations/main_fourier.cpp
+        )
+target_link_libraries(main_fourier
+        mpfr
+        ptecoef  # From the https://github.com/jnil02/point2ellipse_series repo.
+        symengine
+        gmp
+        )

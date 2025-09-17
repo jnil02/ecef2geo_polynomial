@@ -39,7 +39,7 @@ inline long powm1(long n) {
 	return 1L - ((n & 1L) << 1);
 }
 
-/** Construct GiNaC symbolic expression for mu.
+/** Construct SymEngine symbolic expression for mu.
  *
  * @param N Summation index limit N.
  * @param M Summation index limit M.
@@ -67,7 +67,7 @@ Expression mu_ex(int N, int M, Expression &u, Expression &v,
 	return mu_NM;
 }
 
-/** Construct GiNaC symbolic expression for omega.
+/** Construct SymEngine symbolic expression for omega.
  *
  * @param N Summation index limit N.
  * @param M Summation index limit M.
@@ -93,7 +93,7 @@ Expression omega_ex(int N, int M, Expression &u, Expression &v,
 	return omega_NM;
 }
 
-/** Construct GiNaC symbolic expression for omega.
+/** Construct SymEngine double power series.
  *
  * @param N Summation index limit N.
  * @param M Summation index limit M.
@@ -102,9 +102,9 @@ Expression omega_ex(int N, int M, Expression &u, Expression &v,
  * @param syms Symbols to use for the coefficients arranged in a nested array.
  * @return A GiNaC expression for omega given the input parameters.
  */
-Expression phi_ex(int N, int M, Expression &u, Expression &v,
-				  int n_min, int k_min,
-				  Expression syms[N_MAX + 1][M_MAX + 1]) {
+Expression double_power_series(int N, int M, Expression &u, Expression &v,
+							   int n_min, int k_min,
+							   Expression syms[N_MAX + 1][M_MAX + 1]) {
 	Expression omega_NM(0);
 	for (int n = n_min; n <= N; ++n) {
 		Expression sum(0);
