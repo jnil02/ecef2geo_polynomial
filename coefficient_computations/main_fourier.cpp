@@ -64,14 +64,15 @@ struct coef_structs {
 	const char* name;
 	int n_min;  // Lower fourier coefficient index.
 	int k_min;  // Lower varrho coefficient index.
+	mpfr::mpreal o;  // Offset term for expression.
 	std::function<mpfr::mpreal(int, int)> coef;  // Get coefficient.
 
 	// Just for initializing the array.
-	coef_structs() : name(nullptr), n_min(-1), k_min(-1), coef(nullptr) {}
+	coef_structs() : name(nullptr), n_min(-1), k_min(-1), o(0), coef(nullptr) {}
 
-	coef_structs(const char* name, int n, int M,
+	coef_structs(const char* name, int n, int M, mpfr::mpreal o,
 				 std::function<mpfr::mpreal(int, int)> coef)
-				 : name(name), n_min(n), k_min(M), coef(std::move(coef)) {
+				 : name(name), n_min(n), k_min(M), o(std::move(o)), coef(std::move(coef)) {
 	}
 
 	// Delete copy constructor.
@@ -82,6 +83,7 @@ struct coef_structs {
 		name = other.name;
 		n_min = other.n_min;
 		k_min = other.k_min;
+		o = other.o;
 		coef = std::move(other.coef);
 	}
 
@@ -89,6 +91,7 @@ struct coef_structs {
 		name = other.name;
 		n_min = other.n_min;
 		k_min = other.k_min;
+		o = other.o;
 		coef = std::move(other.coef);
 		return *this;
 	}
@@ -96,17 +99,6 @@ struct coef_structs {
 	~coef_structs() {
 	}
 };
-
-
-
-/* PLAN
- * - Städa upp och commit:a!!!!!!!! (bara polynomgenereringen)
- * - Skapa en helt separat main som genererar omega och tau (inte minimax).
- * - Mha dessa, gör faktiska nva-approximationer.
- * - Göra alla approximationer som jag har för minimax-varianten.
- * - Gör minimax av dessa!
- * - Ta över världen.
- */
 
 int main() {
 	set_precision_bits(prec);
@@ -123,21 +115,25 @@ int main() {
 	funcs.emplace_back("ptepoly_phi",
 					   0,  // n_min
 					   1,  // k_min
+					   mpfr::mpreal(0),
 					   [](int n, int k) { return d_phi(n,k); }
 					   );
 	funcs.emplace_back("ptepoly_h",
 					   1,  // n_min
 					   0,  // k_min
+					   -mp_a(),
 					   [](int n, int k) { return d_h(n,k); }
 					   );
 	funcs.emplace_back("ptepoly_sin",
 					   0,  // n_min
 					   1,  // k_min
+					   mpfr::mpreal(0),
 					   [](int n, int k) { return d_sin(n,k); }
 					   );
 	funcs.emplace_back("ptepoly_cos",
 					   1,  // n_min
 					   1,  // k_min
+					   mpfr::mpreal(0),
 					   [](int n, int k) { return d_cos(n,k); }
 					   );
 
@@ -155,7 +151,9 @@ int main() {
 		SymEngine::Expression u("u"), v("v");
 		for (int N = 0; N <= N_MAX; ++N)
 			for (int M = 0; M <= M_MAX; ++M) {
-				SymEngine::Expression om = SymEngine::expand(double_power_series(N, M, u, v, coef.n_min, coef.k_min, syms));  // Plain symbolic double sum.
+				SymEngine::mpfr_class mc(coef.o.mpfr_ptr());
+				SymEngine::Expression a0 = SymEngine::Expression(SymEngine::real_mpfr(mc));
+				SymEngine::Expression om = a0 + SymEngine::expand(double_power_series(N, M, u, v, coef.n_min, coef.k_min, syms));  // Plain symbolic double sum.
 				// Lambda for substituting symbolic coefficients in expression.
 				auto subs = [N, M, &coef, &syms](const SymEngine::Expression& u_coef) -> SymEngine::Expression {
 					std::map<SymEngine::RCP<const SymEngine::Basic>, SymEngine::RCP<const SymEngine::Basic>, SymEngine::RCPBasicKeyLess> sub_map;

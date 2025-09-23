@@ -20,28 +20,28 @@ inline mpfr::mpreal d_phi(int n, int k) {
 	mpfr::mpreal d(0);
 	for (int l = std::max(k, n + 1); l <= k + n; ++l)
 		d += rc_expr(point_to_ellipse_series::d_phi(n, k, l)) * mpfr::pow(mp_e2(), l);
-	return d;
+	return d * mpfr::pow(mp_a(), k);
 }
 
 inline mpfr::mpreal d_sin(int n, int k) {
 	mpfr::mpreal d(0);
 	for (int l = std::max(k, n); l <= n + k; ++l)
 		d += rc_expr(point_to_ellipse_series::d_sin(n, k, l)) * mpfr::pow(mp_e2(), l);
-	return d;
+	return d * mpfr::pow(mp_a(), k);
 }
 
 inline mpfr::mpreal d_cos(int n, int k) {
 	mpfr::mpreal d(0);
 	for (int l = std::max(k, n); l < n + k; ++l)
 		d += rc_expr(point_to_ellipse_series::d_cos(n, k, l)) * mpfr::pow(mp_e2(), l);
-	return d;
+	return d * mpfr::pow(mp_a(), k);
 }
 
 inline mpfr::mpreal d_h(int n, int k) {
 	mpfr::mpreal d(0);
 	for (int l = std::max(k + 1, n); l <= n + k; ++l)
 		d += rc_expr(point_to_ellipse_series::d_h(n, k, l)) * mpfr::pow(mp_e2(), l);
-	return d;
+	return d * mpfr::pow(mp_a(), k + 1);
 }
 
 #endif //ECEF2GEO_POLYNOMIAL_UTIL_FOUR_HPP

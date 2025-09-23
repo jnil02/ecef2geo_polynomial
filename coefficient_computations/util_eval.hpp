@@ -105,9 +105,23 @@ print_poly(std::vector<std::string>::iterator c, int n, int N,
 		return print_poly(c, n, N, var, evaluation_schema::direct_schema, xs);
 	std::string a = print_poly(c + k, n - k, N, var, f, xs);
 	std::string b = print_poly(c, k, N, var, f, xs);
+	// FIXME(JO) Make this number comparison more robust.
+	if (a == "0" && b == "0")
+		return "0";
+	if (a == "0")
+		return b;
 	if (k > 1)
 		xs.emplace_back(k);
 	std::string xk = k == 1 ? var : var + std::to_string(k);
+	if (b == "0") {
+		if (a.find(" + ") < a.length())
+			return "(" + a + ")" + " * " + xk;
+		else {
+			if (a == "1")  // To not print "1 * x"
+				return xk;
+			return a + " * " + xk;
+		}
+	}
 	// If there is a "+" in the expression, add parenthesis.
 	if (a.find(" + ") < a.length())
 		return b + " + " + "(" + a + ")" + " * " + xk;

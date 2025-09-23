@@ -56,3 +56,10 @@ target_link_libraries(main_fourier
         symengine
         gmp
         )
+
+add_executable(main_taylor
+        coefficient_computations/main_taylor.cpp
+        )
+target_link_libraries(main_taylor
+        mpfr
+        )
