@@ -11,7 +11,9 @@
 #include <functional>  // std::function.
 #include <cmath>  // std::sqrt, std::pow.
 
-#include "mplapack/mpreal.h"
+// Note this file assumes either of below has been included.
+//#include <mplapack/mpreal.h>
+//#include <mpreal.h>
 
 using namespace mpfr;
 
@@ -84,7 +86,7 @@ itp_mpreal(std::function<mpreal(const mpreal &)> &f, mpreal a, mpreal b,
 	}
 
 	// Check that f(a) and f(b) are finite.
-	if (_isinf(ya) || _isnan(ya) || _isinf(yb) || _isnan(yb)) {
+	if (isinf(ya) || isnan(ya) || isinf(yb) || isnan(yb)) {
 		fprintf(stderr, "f(a) and f(b) must be finite.");
 		return NAN;
 	}
@@ -120,7 +122,7 @@ itp_mpreal(std::function<mpreal(const mpreal &)> &f, mpreal a, mpreal b,
 	log2bma = log(b - a) * M_LOG2E;
 	mpreal for_rk;
 	for_rk.set_prec(prec);
-	for_rk = std::pow(2.0, n0 - 1 + log2e + ceil(log2bma - log2e));
+	for_rk = mpfr::pow(2.0, n0 - 1 + log2e + ceil(log2bma - log2e));
 	// Initialise the counter k and implement the loop.
 	int k = 0;
 	mpreal xf, x12, delta, rk, xt, xITP, yITP, interval, tmp;

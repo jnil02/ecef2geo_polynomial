@@ -15,8 +15,11 @@
  * IS THE DESIRED PRECISION.
  */
 
-#include <mpfr.h>
-#include "mplapack/mpreal.h"
+// Note this file assumes that
+//#include <mpfr.h>
+// and either of below has been included.
+//#include <mplapack/mpreal.h>
+//#include <mpreal.h>
 
 #include <functional>  // std::functional.
 
@@ -627,11 +630,9 @@ struct util_mpgeo {
 		mpfr_init2(ecef.y, prec);
 		mpfr_init2(ecef.z, prec);
 
-		mpfr_ptr r_ptr(r);
-		mpfr_set(ecef.x, r_ptr, MPFR_RNDN);
+		mpfr_set_mpreal(ecef.x, r);
 		mpfr_set_d(ecef.y, 0.0, MPFR_RNDN);
-		mpfr_ptr z_ptr(z);
-		mpfr_set(ecef.z, z_ptr, MPFR_RNDN);
+		mpfr_set_mpreal(ecef.z, z);
 
 		// Using a transformation for only latitude/altitude made this code
 		// run roughly 20% faster. It was judged not to be worse it.
@@ -677,11 +678,9 @@ struct util_mpgeo {
 		mpfr_init2(ecef.y, prec);
 		mpfr_init2(ecef.z, prec);
 
-		mpfr_ptr r_ptr(r);
-		mpfr_set(ecef.x, r_ptr, MPFR_RNDN);
+		mpfr_set_mpreal(ecef.x, r);
 		mpfr_set_d(ecef.y, 0.0, MPFR_RNDN);
-		mpfr_ptr z_ptr(z);
-		mpfr_set(ecef.z, z_ptr, MPFR_RNDN);
+		mpfr_set_mpreal(ecef.z, z);
 
 		// Using a transformation for only latitude/altitude made this code
 		// run roughly 20% faster. It was judged not to be worse it.
@@ -750,7 +749,7 @@ struct util_mpgeo {
 		}
 		mpreal integral;
 		integral.set_prec(prec);
-		integral = sum(vals, N + 1, MPFR_RNDN);
+		integral = sum(vals, N + 1);
 
 		delete[] lats;
 		delete[] ws;

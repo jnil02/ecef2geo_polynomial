@@ -9,7 +9,9 @@
  * polynomials coefficients are represented by mpreal numbers.
  */
 
-#include "mplapack/mpreal.h"
+// Note this file assumes either of below has been included.
+//#include <mplapack/mpreal.h>
+//#include <mpreal.h>
 
 using namespace mpfr;
 

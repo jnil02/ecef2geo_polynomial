@@ -8,6 +8,23 @@
  * files.
  */
 
+// Include these first since they are needed in subsequent includes.
+// Included such that we can switch between mpreal.h and mplapack/mpreal.h.
+
+#include <mpfr.h>
+#include <mplapack/mpreal.h>
+// ***** To handle inconsistencies between mplapack/mpreal.h and mpreal.h *****
+void mpfr_set_mpreal(mpfr_ptr to, mpfr::mpreal &val) {
+		mpfr_ptr r_ptr(val);
+		mpfr_set(to, r_ptr, MPFR_RNDN);
+}
+inline bool isnan    (const mpfr::mpreal& v){    return mpfr::_isnan(v);    }
+inline bool isinf    (const mpfr::mpreal& v){    return mpfr::_isinf(v);    }
+inline mpfr::mpreal sum(const mpfr::mpreal tab[], unsigned long int n) {
+	return mpfr::sum(tab, n, MPFR_RNDN);
+}
+// ****************************************************************************
+
 #include "settings.hpp"
 #include "util_mpgeo.hpp"
 #include "util_sym.hpp"

@@ -11,7 +11,7 @@ namespace ecef2geo {
 constexpr double TAU_H_MIN = -5.00000000000000000e+03;
 constexpr double TAU_H_MAX = 1.00000000000000000e+05;
 constexpr double TAU_DELTA_MIN = 0.00000000000000000e+00;
-constexpr double TAU_DELTA_MAX = 1.1334967451904287e-5;
+constexpr double TAU_DELTA_MAX = 1.1334967451904287e-05;
 
 namespace priv {
 

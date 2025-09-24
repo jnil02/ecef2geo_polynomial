@@ -6,6 +6,26 @@
  * with Sollya and exported to header files.
  */
 
+// Include these first since they are needed in subsequent includes.
+// Included such that we can switch between mpreal.h and mplapack/mpreal.h.
+
+// Defines to give an expected behaviour of mpfr.h for mpreal.h.
+#define MPFR_USE_NO_MACRO
+#define MPFR_USE_INTMAX_T
+#include <cstdint>  // Required for mpreal.h. when mpfr is included first.
+#include <mpfr.h>
+#include <mpreal.h>
+
+// ***** To handle inconsistencies between mplapack/mpreal.h and mpreal.h *****
+void mpfr_set_mpreal(mpfr_ptr to, mpfr::mpreal &val) {
+	mpfr_set(to, val.mpfr_ptr(), MPFR_RNDN);
+}
+inline mpfr::mpreal sum(const mpfr::mpreal tab[], unsigned long int n) {
+	int status;
+	return mpfr::sum(tab, n, status, mpfr::mpreal::get_default_rnd());
+}
+// ****************************************************************************
+
 #include "settings.hpp"
 #include "util_eval.hpp"
 #include "remez_sollya.hpp"
@@ -118,7 +138,7 @@ int main() {
 	mpreal DELTA_MAX_VAL;
 	DELTA_MAX_VAL.set_prec(prec);
 	DELTA_MAX_VAL = f(DELTA_MAX_LAT);
-	std::basic_string<char> DELTA_MAX_STR = DELTA_MAX_VAL.to_string(17);
+	std::basic_string<char> DELTA_MAX_STR = DELTA_MAX_VAL.toString(17);
 	const char* DELTA_MAX = DELTA_MAX_STR.c_str();
 
 	// Initialize Sollya.
@@ -147,8 +167,8 @@ int main() {
 
 	// Minimax approximation arguments.
 	sollya_obj_t range, low, high, sigma, tau;
-	low = SOLLYA_CONST_SI64(DELTA_MIN);
-	high = SOLLYA_CONST(DELTA_MAX_VAL);
+	low = sollya_lib_constant_from_double(DELTA_MIN);
+	high = sollya_lib_parse_string(DELTA_MAX_VAL.toString().c_str());
 	range = sollya_lib_range(low, high);
 	// Truncated series approximations, well below double precision accuracy,
 	// of sigma and tau. Note that the variable of sigma and tau is small
