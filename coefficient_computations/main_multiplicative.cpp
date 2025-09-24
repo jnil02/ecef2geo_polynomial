@@ -31,7 +31,6 @@ inline mpfr::mpreal sum(const mpfr::mpreal tab[], unsigned long int n) {
 #include "remez_sollya.hpp"
 #include "util_root.hpp"  // find_max
 #include "util_mpgeo.hpp"  // f_c
-#include "mplapack/mpreal.h"
 
 #define _USE_MATH_DEFINES
 #include <cmath>  // std::sqrt, std::cbrt, std::atan, std::sin, std::cos.
