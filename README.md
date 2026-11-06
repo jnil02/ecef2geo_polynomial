@@ -70,10 +70,10 @@ giving the coordinate of the peak of Mount Everest as
 
 The algorithm implementations depend on the polynomial approximations generated
 by the remainder of the project and found under the generated folder.
-Pregenerated code resulting from executing the coefficient calculation
+Pregenerated code resulting from executing the coefficient computations
 executables as-is is provided, i.e. approximations for the altitude range 
 [-500,100000]m. This is so that the implementations are usable without 
-getting the more complex coefficient calculations to run.
+getting the more complex coefficient computations to run.
 
 The user still has to select polynomial orders, i.e. the template arguments,
 determining the transformation accuracy and speed. The exact trade-off 

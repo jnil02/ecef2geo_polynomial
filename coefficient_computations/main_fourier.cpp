@@ -116,25 +116,25 @@ int main() {
 					   0,  // n_min
 					   1,  // k_min
 					   mpfr::mpreal(0),
-					   [](int n, int k) { return d_phi(n,k); }
+					   [](int n, int k) { return d_phi(n,k) * mpfr::pow(mp_a(), k); }
 					   );
 	funcs.emplace_back("ptepoly_h",
 					   1,  // n_min
 					   0,  // k_min
 					   -mp_a(),
-					   [](int n, int k) { return d_h(n,k); }
+					   [](int n, int k) { return d_h(n,k) * mpfr::pow(mp_a(), k + 1); }
 					   );
 	funcs.emplace_back("ptepoly_sin",
 					   0,  // n_min
 					   1,  // k_min
 					   mpfr::mpreal(0),
-					   [](int n, int k) { return d_sin(n,k); }
+					   [](int n, int k) { return d_sin(n,k) * mpfr::pow(mp_a(), k); }
 					   );
 	funcs.emplace_back("ptepoly_cos",
 					   1,  // n_min
 					   1,  // k_min
 					   mpfr::mpreal(0),
-					   [](int n, int k) { return d_cos(n,k); }
+					   [](int n, int k) { return d_cos(n,k) * mpfr::pow(mp_a(), k); }
 					   );
 
 	// Note, the coefficient functions in funcs are not thread safe so we cannot

@@ -126,31 +126,25 @@ static std::vector<mpfr_ptr> get_poly_coefs(sollya_obj_t &f) {
 	}
 }
 
-/** Compute minimax approximation with Sollya.
- *
- * @param nr_terms
- * @param terms Terms to consider in the approximation.
- * @param f Function to approximate.
- * @param range of the approximation.
- * @param subterms Subset of terms to retrieve.
- * @return A vector of coefficients literals.
- */
+static void clear_mpfrs(const std::vector<mpfr_ptr>& result_mpfr)
+{
+	// Clear all Sollya and mpfr objects.
+	for (auto &i: result_mpfr) {
+		mpfr_clear(i);
+		delete[] i;
+	}
+}
+
 static std::vector<std::string>
-remez(int nr_terms, sollya_obj_t &terms, sollya_obj_t &f, sollya_obj_t &range,
-	  int *subterms = nullptr) {
+mpfrs_to_strings(const std::vector<mpfr_ptr>& result_mpfr,
+				 const std::vector<int>& subterms = {}) {
 	// Run Remez optimization.
-	sollya_obj_t poly = nr_terms ? sollya_lib_remez(f, terms, range, NULL)
-								 : NULL;
-
-	// Retrieve polynomial coefficients.
-	std::vector<mpfr_ptr> result_mpfr = get_poly_coefs(poly);
-
 	// Export string representations for the coefficients.
 	std::vector<std::string> coefs;
 	char tmp[512]; // 512 digits should always be enough.
-	if (subterms) {
-		for (int i = 0; i < nr_terms; i++) {
-			mpfr_sprintf(tmp, "%.16Re", result_mpfr[subterms[i]]);
+	if (!subterms.empty()) {
+		for (int term : subterms) {
+			mpfr_sprintf(tmp, "%.16Re", result_mpfr[term]);
 			coefs.emplace_back(std::string(tmp));
 		}
 	} else {
@@ -160,14 +154,30 @@ remez(int nr_terms, sollya_obj_t &terms, sollya_obj_t &f, sollya_obj_t &range,
 		}
 	}
 
-	// Clear all Sollya and mpfr objects.
-	for (auto &i: result_mpfr) {
-		mpfr_clear(i);
-		delete[] i;
-	}
+	return coefs;
+}
+
+/** Compute minimax approximation with Sollya.
+ *
+ * @param nr_terms
+ * @param terms Terms to consider in the approximation.
+ * @param f Function to approximate.
+ * @param range of the approximation.
+ * @param subterms Subset of terms to retrieve.
+ * @return A vector of coefficients literals.
+ */
+static std::vector<mpfr_ptr>
+remez(int nr_terms, sollya_obj_t &terms, sollya_obj_t &f, sollya_obj_t &range) {
+	// Run Remez optimization.
+	sollya_obj_t poly = nr_terms ? sollya_lib_remez(f, terms, range, NULL) : NULL;
+
+	// Retrieve polynomial coefficients.
+	std::vector<mpfr_ptr> result_mpfr = get_poly_coefs(poly);
+
+	// Clear Sollya objects.
 	sollya_lib_clear_obj(poly);
 
-	return coefs;
+	return result_mpfr;
 }
 
 #endif // ECEF2GEO_POLYNOMIAL_REMEZ_SOLLYA_HPP

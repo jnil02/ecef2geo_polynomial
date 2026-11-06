@@ -225,8 +225,12 @@ int main() {
 			terms_tau = sollya_lib_append(terms_tau, SOLLYA_CONST_UI64(i));
 
 		// Run Remez exchange algorithm.
-		str_vec coefs_sigma = remez(nr_terms_sigma, terms_sigma, sigma, range);
-		str_vec coefs_tau = remez(nr_terms_tau, terms_tau, tau, range);
+		std::vector<mpfr_ptr> result_sigma = remez(nr_terms_sigma, terms_sigma, sigma, range);
+		str_vec coefs_sigma = mpfrs_to_strings(result_sigma);
+		clear_mpfrs(result_sigma);
+		std::vector<mpfr_ptr> result_tau = remez(nr_terms_tau, terms_tau, tau, range);
+		str_vec coefs_tau = mpfrs_to_strings(result_tau);
+		clear_mpfrs(result_tau);
 
 		// Print sigma approximation for L.
 		fprintf(fp_sig, sigma_signature, L);

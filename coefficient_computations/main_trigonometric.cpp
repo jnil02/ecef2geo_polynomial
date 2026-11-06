@@ -106,15 +106,19 @@ int main() {
 
 		for (int i = 0; i <= I; i++)
 			terms_asin = sollya_lib_append(terms_asin, SOLLYA_CONST_UI64(i));
-		int terms2_atan[I];
+		std::vector<int> terms2_atan{};
 		for (int i = 0; i < I; i++) {
-			terms2_atan[i] = i * 2 + 1;  // Separate list of coefs to retrieve.
+			terms2_atan.emplace_back(i * 2 + 1);  // Separate list of coefs to retrieve.
 			terms_atan = sollya_lib_append(terms_atan,
 										   SOLLYA_CONST_UI64(i * 2 + 1));
 		}
 
-		str_vec cs_asin = remez(I + 1, terms_asin, f_asin, range_asin);
-		str_vec cs_atan = remez(I, terms_atan, f_atan, range_atan, terms2_atan);
+		std::vector<mpfr_ptr> result_asin = remez(I + 1, terms_asin, f_asin, range_asin);
+		str_vec cs_asin = mpfrs_to_strings(result_asin);
+		clear_mpfrs(result_asin);
+		std::vector<mpfr_ptr> result_atan = remez(I, terms_atan, f_atan, range_atan);
+		str_vec cs_atan = mpfrs_to_strings(result_atan, terms2_atan);
+		clear_mpfrs(result_atan);
 
 		fprintf(fp_asin, chi_signature, I);
 		std::vector<int> xs_chi;
