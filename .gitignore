@@ -1,2 +1,12 @@
 # Folder contained development stuff.
 dev
+
+# SSH keys (must never be committed).
+github
+github.pub
+
+# CMake build directories.
+cmake-build-*/
+
+# IDE directories.
+.idea/

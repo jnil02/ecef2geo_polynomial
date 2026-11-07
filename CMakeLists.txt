@@ -61,3 +61,14 @@ add_executable(main_taylor
 target_link_libraries(main_taylor
         mpfr
         )
+
+add_executable(main_additive_inv
+        coefficient_computations/main_additive_inv.cpp
+        )
+target_link_libraries(main_additive_inv
+        mpfr
+        ptecoef  # From the https://github.com/jnil02/point2ellipse_series repo.
+        symengine
+        gmp
+        sollya
+        )

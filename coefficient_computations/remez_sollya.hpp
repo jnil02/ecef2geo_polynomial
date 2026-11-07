@@ -180,4 +180,26 @@ remez(int nr_terms, sollya_obj_t &terms, sollya_obj_t &f, sollya_obj_t &range) {
 	return result_mpfr;
 }
 
+/** Scale polynomial coefficients by ascending powers of a.
+ *
+ * Multiplies each coefficient in place by a^(i + n0), where i is the
+ * coefficient's index in vec. This rescales the coefficients of a polynomial
+ * sum_i c_i x^i for the change of variable x -> a * x, with n0 the degree of
+ * the first (lowest-order) coefficient held in vec.
+ *
+ * @param n0 Degree of the first coefficient in vec.
+ * @param vec Coefficients to scale, modified in place.
+ * @param a Base of the scaling power.
+ */
+static void pot_scaling(int n0, std::vector<mpfr_ptr> &vec, mpfr_ptr a)
+{
+	mpfr_t p;
+	mpfr_init(p);
+	for (size_t i = 0; i < vec.size(); ++i) {
+		mpfr_pow_ui(p, a, i + n0, MPFR_RNDN);
+		mpfr_mul(vec[i], vec[i], p, MPFR_RNDN);
+	}
+	mpfr_clear(p);
+}
+
 #endif // ECEF2GEO_POLYNOMIAL_REMEZ_SOLLYA_HPP
