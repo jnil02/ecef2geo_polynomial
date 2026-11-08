@@ -8,8 +8,8 @@
  * Reference ECEF to geodetic coordinate transformations.
  */
 
-#include "coordinate_structs.hpp"
-#include "ecef2geo_common.hpp"
+#include "coordinate_structs.hpp"  // Coordinate structs.
+#include "wgs84.hpp"               // WGS84 reference ellipsoid constants.
 
 #define _USE_MATH_DEFINES
 #include <cmath>  // sqrt, sin, cos, atan, atan2, cbrt, abs

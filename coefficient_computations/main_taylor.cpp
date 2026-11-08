@@ -107,7 +107,8 @@ inline std::string to_scientific_string(const mpreal &x, int digits) {
 }
 
 
-int main() {
+int main(int argc, char** argv) {
+	set_codegen_folder_from_args(argc, argv);
 	mpfr::mpreal::set_default_prec(prec);
 
 	int sig_digits = 17;  // Significant digits of double.

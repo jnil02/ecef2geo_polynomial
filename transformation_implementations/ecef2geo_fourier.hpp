@@ -13,21 +13,24 @@
 // Input and output (coordinate) structs.
 #include "coordinate_structs.hpp"
 
-// Generated polynomial approximations components.
-#include "generated/ptepoly_phi.hpp"
-#include "generated/ptepoly_h.hpp"
-#include "generated/ptepoly_cos.hpp"
-#include "generated/ptepoly_sin.hpp"
-#include "generated/ptepoly_sigma.hpp"
-#include "generated/ptepoly_tau.hpp"
+// Range-specific generated coefficient components must be included by the
+// consumer BEFORE this header (see the explanation in ecef2geo_polynomial.hpp /
+// nilsson.hpp / ecef2geo_default.hpp). There is no universal range, so this
+// header does not bundle any coefficients.
+#if !defined(POINT_TO_ELLIPSE_FOURIER_ptepoly_phi_HPP) || \
+    !defined(POINT_TO_ELLIPSE_FOURIER_ptepoly_h_HPP) || \
+    !defined(POINT_TO_ELLIPSE_FOURIER_ptepoly_cos_HPP) || \
+    !defined(POINT_TO_ELLIPSE_FOURIER_ptepoly_sin_HPP) || \
+    !defined(ECEF2GEO_SIGMA2_HPP) || !defined(ECEF2GEO_TAU2_HPP) || \
+    !defined(ECEF2GEO_PHI_HPP) || !defined(ECEF2GEO_H_HPP) || \
+    !defined(ECEF2GEO_SIGMA_HPP) || !defined(ECEF2GEO_TAU_HPP)
+#error "ecef2geo: include the generated Fourier coefficient headers (ptepoly_*.hpp, phi.hpp, h.hpp, sigma.hpp, tau.hpp) before <ecef2geo/ecef2geo_fourier.hpp>. There is no universal range. See nilsson.hpp / ecef2geo_default.hpp."
+#endif
 
-#include "generated/phi.hpp"
-#include "generated/h.hpp"
-#include "generated/sigma.hpp"
-#include "generated/tau.hpp"
-
-// To get WGS84 constants.
-#include "ecef2geo_common.hpp"
+// The current n-vector/altitude Fourier method needs no arcsin/arctan, so the
+// trigonometric approximations are not included. Kept commented out because the
+// planned lla (latitude/longitude) Fourier approximations will need them.
+//#include "ecef2geo_trigonometric.hpp"
 
 #include <cmath>  // std::copysign, std::sqrt
 

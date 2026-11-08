@@ -114,7 +114,8 @@ int div_floor(int x, int y) {
 	return q;
 }
 
-int main() {
+int main(int argc, char** argv) {
+	set_codegen_folder_from_args(argc, argv);
 	// Compute the value range of the approximations.
 	// The minimum delta is by definition zero, at the poles.
 	const double DELTA_MIN = 0.0;

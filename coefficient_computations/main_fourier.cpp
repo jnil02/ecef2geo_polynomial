@@ -100,7 +100,8 @@ struct coef_structs {
 	}
 };
 
-int main() {
+int main(int argc, char** argv) {
+	set_codegen_folder_from_args(argc, argv);
 	set_precision_bits(prec);
 
 	// Generate coefficient symbols to use in the symbolic polynomials.

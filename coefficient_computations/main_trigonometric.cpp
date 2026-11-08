@@ -64,7 +64,8 @@ static const char *postamble_xi =
 		"}  // namespace priv\n"
 		"\n#endif // ECEF2GEO_XI_HPP\n";
 
-int main() {
+int main(int argc, char** argv) {
+	set_codegen_folder_from_args(argc, argv);
 	// Initialize Sollya and set working precision.
 	sollya_lib_init();
 	sollya_obj_t prec;

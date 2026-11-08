@@ -10,6 +10,7 @@
  */
 
 #include "./../transformation_implementations/coordinate_structs.hpp"
+#include "./../transformation_implementations/wgs84.hpp"
 #include "./../transformation_implementations/ecef2geo_reference.hpp"
 
 #define _USE_MATH_DEFINES

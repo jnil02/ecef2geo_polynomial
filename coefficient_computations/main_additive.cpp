@@ -166,7 +166,8 @@ struct coef_struct {
 };
 
 
-int main() {
+int main(int argc, char** argv) {
+	set_codegen_folder_from_args(argc, argv);
 	// TODO(JO) This should not be required. The precision of the arithmetics is
 	//  specified everywhere but in mpreal.h on line 1897, in
 	//  "inline mpreal::mpreal(const mpreal &u)" the precision is taken from

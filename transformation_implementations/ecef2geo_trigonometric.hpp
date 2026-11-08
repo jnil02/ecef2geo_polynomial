@@ -2,20 +2,22 @@
 // Distributed under the terms of the BSD 2-Clause License.
 
 /*
- * Polynomial ECEF coordinate (x,y,z) to geodetic coordinate
- * (latitude, longitude, altitude) or (n-vector, altitude) transformation
- * approximations.
+ * Minimax polynomial approximations of the trigonometric functions (arcsin,
+ * arctan and atan2) used by the ECEF-to-geodetic transformation approximations.
  */
 
-#ifndef ECEF2GEO_COMMON_HPP_
-#define ECEF2GEO_COMMON_HPP_
+#ifndef ECEF2GEO_TRIGONOMETRIC_HPP_
+#define ECEF2GEO_TRIGONOMETRIC_HPP_
 
 // Input and output (coordinate) structs.
 #include "coordinate_structs.hpp"
 
-// Generated polynomial approximation for trigonometric functions.
-#include "generated/xi.hpp"
-#include "generated/chi.hpp"
+// Generated coefficients for the trigonometric (arcsin/arctan) approximations
+// must be included by the consumer BEFORE this header (see the explanation in
+// ecef2geo_polynomial.hpp / nilsson.hpp / ecef2geo_default.hpp).
+#if !defined(ECEF2GEO_XI_HPP) || !defined(ECEF2GEO_CHI_HPP)
+#error "ecef2geo: include the generated coefficient headers (xi.hpp, chi.hpp) before <ecef2geo/ecef2geo_trigonometric.hpp>. There is no universal range. See nilsson.hpp / ecef2geo_default.hpp."
+#endif
 
 #include <cstdint>  // int64_t, uint64_t
 #define _USE_MATH_DEFINES
@@ -32,23 +34,6 @@
 #ifndef M_PI_4
 #define M_PI_4		0.78539816339744830962
 #endif
-
-namespace wgs84 {
-
-// Primary WGS84 constants.
-constexpr double a = 6378137.0;  // Semi-major axis / equatorial radius.
-constexpr double f = 1.0 / 298.257223563;  // Flattening. f = (a - b) / a
-// Derived WGS84 constants.
-constexpr double b = a - f * a;  // Semi-minor axis / polar radius.
-constexpr double e2 = 1.0 - (b * b) / (a * a);  // First eccentricity squared.
-// Note, constexpr sqrt is a gcc extension. If not available you may use:
-//constexpr double e = 0.08181919084262157;
-// However, in this case, you will have to make sure it matches the primary
-// constants a and f.
-constexpr double e = std::sqrt(e2);  // First eccentricity.
-
-}  // namespace wgs84
-
 
 namespace ecef2geo {
 
@@ -153,4 +138,4 @@ inline double atan2_approx(double y, double x) {
 }  // namespace priv
 }  // namespace
 
-#endif // ECEF2GEO_COMMON_HPP_
+#endif // ECEF2GEO_TRIGONOMETRIC_HPP_

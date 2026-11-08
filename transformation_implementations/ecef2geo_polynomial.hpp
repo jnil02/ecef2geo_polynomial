@@ -13,14 +13,20 @@
 // Input and output (coordinate) structs.
 #include "coordinate_structs.hpp"
 
-// Generated polynomial approximations components.
-#include "generated/mu.hpp"
-#include "generated/omega.hpp"
-#include "generated/sigma.hpp"
-#include "generated/tau.hpp"
+// Range-specific generated coefficient components (mu, omega, sigma, tau) must
+// be included by the consumer BEFORE this header. The approximations are
+// optimized for a specific altitude range -- there is no universal set -- so
+// this header does not bundle any. It is a deliberate, explicit choice which
+// range-specific coefficients to use. See the nilsson.hpp pattern in a
+// consuming project, or ecef2geo_default.hpp in this repo for the checked-in
+// common-range set.
+#if !defined(ECEF2GEO_MU_HPP) || !defined(ECEF2GEO_OMEGA_HPP) || \
+    !defined(ECEF2GEO_SIGMA_HPP) || !defined(ECEF2GEO_TAU_HPP)
+#error "ecef2geo: include the generated coefficient headers (mu.hpp, omega.hpp, sigma.hpp, tau.hpp) before <ecef2geo/ecef2geo_polynomial.hpp>. There is no universal range. See nilsson.hpp / ecef2geo_default.hpp."
+#endif
 
-// Generated polynomial approximation for trigonometric functions.
-#include "ecef2geo_common.hpp"
+// Minimax polynomial approximations of arcsin/arctan/atan2.
+#include "ecef2geo_trigonometric.hpp"
 
 #include <cstdint>  // int64_t, uint64_t
 #define _USE_MATH_DEFINES

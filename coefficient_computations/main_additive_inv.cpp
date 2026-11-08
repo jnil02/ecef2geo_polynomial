@@ -193,7 +193,8 @@ struct minimax_funcs {
 };
 
 
-int main() {
+int main(int argc, char** argv) {
+	set_codegen_folder_from_args(argc, argv);
 
 //	mpreal VARRHO_MIN(0);
 //	mpreal VARRHO_MIN(0.5);

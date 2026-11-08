@@ -9,7 +9,10 @@
 
 #include "util_geo.hpp"
 
-#include "../transformation_implementations/ecef2geo_polynomial.hpp"
+// The transformation headers are coefficient-agnostic. ecef2geo_default.hpp
+// bundles the checked-in common-range coefficient set with the transformations
+// for the tests.
+#include "../transformation_implementations/ecef2geo_default.hpp"
 #include "../coefficient_computations/util_mpgeo.hpp"
 
 // Precision used for the multiprecision transformations.
