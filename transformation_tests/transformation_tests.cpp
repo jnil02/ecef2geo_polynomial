@@ -13,6 +13,23 @@
 // bundles the checked-in common-range coefficient set with the transformations
 // for the tests.
 #include "../transformation_implementations/ecef2geo_default.hpp"
+// util_mpgeo.hpp is mpreal-variant-agnostic. The including translation unit must
+// provide the multiprecision backend (mpfr + an mpreal wrapper) and a small
+// compatibility shim (mpfr_set_mpreal, isnan/isinf, a 2-argument sum). Here we use
+// the mplapack mpreal and forward sum() to its 3-argument form. The codegen mains
+// carry their own copies of this shim for whichever mpreal they build against.
+#include <mpfr.h>
+#include <mplapack/mpreal.h>
+using namespace mpfr;
+inline void mpfr_set_mpreal(mpfr_ptr to, mpfr::mpreal &val) {
+	mpfr_ptr r_ptr(val);
+	mpfr_set(to, r_ptr, MPFR_RNDN);
+}
+inline bool isnan(const mpfr::mpreal &v) { return mpfr::_isnan(v); }
+inline bool isinf(const mpfr::mpreal &v) { return mpfr::_isinf(v); }
+inline mpfr::mpreal sum(const mpfr::mpreal tab[], unsigned long int n) {
+	return mpfr::sum(tab, n, MPFR_RNDN);
+}
 #include "../coefficient_computations/util_mpgeo.hpp"
 
 // Precision used for the multiprecision transformations.
